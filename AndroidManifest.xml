@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.raven.backup" android:versionCode="19" android:versionName="1.4.1">
+ <uses-sdk android:minSdkVersion="30" android:targetSdkVersion="35"/>
+ <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+ <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+ <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+ <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+ <application android:label="Raven Backup" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@style/RavenTheme" android:allowBackup="false" android:debuggable="false">
+  <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|uiMode"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
+  <activity android:name=".SetupActivity" android:exported="false" android:configChanges="orientation|screenSize|uiMode"/>
+  <service android:name=".ScheduledBackupService" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true"/>
+ </application>
+</manifest>

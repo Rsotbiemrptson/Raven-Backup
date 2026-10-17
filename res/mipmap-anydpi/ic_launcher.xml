@@ -1,0 +1,4 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+ <item><shape><solid android:color="@color/icon_background"/><corners android:radius="8dp"/></shape></item>
+ <item><bitmap android:src="@drawable/raven_selected" android:gravity="fill"/></item>
+</layer-list>

@@ -1,0 +1,5 @@
+package dev.raven.backup;
+import java.util.*;
+public class BackupNamesTest {
+ public static void main(String[] args){TimeZone.setDefault(TimeZone.getTimeZone("America/New_York"));Calendar c=Calendar.getInstance();c.clear();c.set(2026,9,15,12,0);String stem=BackupNames.stem("Super Meat Boy",c.getTime());if(!stem.equals("SuperMeatBoy_10-15-2026"))throw new AssertionError(stem);Set<String> names=new HashSet<>();String first=BackupNames.available(stem,names);names.add(first.toLowerCase(Locale.ROOT));String second=BackupNames.available(stem,names);names.add(second.toLowerCase(Locale.ROOT));String third=BackupNames.available(stem,names);if(!second.endsWith("_2.zip")||!third.endsWith("_3.zip"))throw new AssertionError(second+third);if(BackupNames.stem("../../A\\B:*?<>|",c.getTime()).contains("/"))throw new AssertionError("Unsafe path");if(!BackupNames.stem("...",c.getTime()).startsWith("App_"))throw new AssertionError("Empty name");if(!BackupNames.stem("日本語",c.getTime()).startsWith("日本語_"))throw new AssertionError("Unicode name");System.out.println("PASS app/date naming, same-day versions, unsafe names, fallback and Unicode");}
+}

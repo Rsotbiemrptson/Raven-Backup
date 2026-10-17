@@ -1,0 +1,25 @@
+# Local builds and signing material
+.build/
+.local/
+dist/
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+*.idsig
+.env
+.env.*
+local.properties
+# Personal app backups and diagnostic exports
+*.zip
+*.tar
+*.labels
+*.log
+*.pending
+# Only the explicitly curated release APK belongs in Git.
+*.apk
+!releases/**/*.apk
+Thumbs.db
+.DS_Store

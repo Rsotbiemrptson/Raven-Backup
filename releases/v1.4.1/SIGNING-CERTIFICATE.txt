@@ -1,0 +1,8 @@
+Raven Backup 1.3.1 release signing identity
+
+Certificate SHA-256:
+75a37f22fe682a8b85221be775a79f0c69d6f973ae8d60ed7924ec5a67a167eb
+
+Certificate subject: CN=Raven Backup Prototype
+This is the existing early-release certificate. The private keystore is excluded.
+Compare certificate fingerprints with Android apksigner, not only the displayed subject name.

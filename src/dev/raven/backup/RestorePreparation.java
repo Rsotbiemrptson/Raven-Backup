@@ -7,8 +7,8 @@ import java.util.*;
 /** Adapts only ordinary app-owned data to the current installed identity. */
 final class RestorePreparation {
  static String prepare(BackupEngine engine,File job,JSONObject manifest)throws Exception {
-  FirmwareCheck.require(manifest);
-  StringBuilder description=new StringBuilder();if(!android.os.Build.FINGERPRINT.equals(manifest.getString("fingerprint")))description.append(manifest.has("firmwareBase")?"Framework/vendor identities match despite the reported fingerprint change.\n":"Recognized Odin 2 stock-318 fingerprint spoof; actual model and Android version match.\n");JSONArray apps=manifest.getJSONArray("apps");
+  FirmwareCheck.validate(manifest);
+  StringBuilder description=new StringBuilder();JSONArray apps=manifest.getJSONArray("apps");
   for(int i=0;i<apps.length();i++){
    JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");JSONObject current=engine.info(pkg);
    if(current.getLong("version")!=app.getLong("version"))throw new IOException("App version differs for "+pkg+". Install the backed-up version first.");

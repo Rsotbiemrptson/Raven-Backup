@@ -48,7 +48,7 @@ final class SetupCheck {
     engine.clean(job);
    }
   }
-  evidence.append("PASS disposable app removed. Your installed apps and backup folder were not changed.\nLive restore enabled on this firmware. Different-firmware backups remain blocked.");
+  evidence.append("PASS disposable app removed. Your installed apps and backup folder were not changed.\nLive restore enabled on this firmware. Different-device or firmware backups require migration confirmation.");
   BackupEngine.write(new File(context.getFilesDir(),"setup-check.txt"),evidence.toString());
   if(!context.getSharedPreferences("live-restore",0).edit().putString("general-verified",Build.FINGERPRINT).commit())throw new IOException("Could not save successful setup verification.");
   return evidence.toString();

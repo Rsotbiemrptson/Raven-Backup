@@ -10,7 +10,7 @@ After a fresh install or reset, complete the guided setup before entering the ma
 
 A queue validates the selected archives before confirmation, then installs missing apps from full backups and restores archives one at a time. Installed app versions/signatures must match. An error stops the remaining queue; previously completed restores stay restored. Temporary recovery protects each individual data replacement; it is not an atomic rollback of the whole queue and does not undo APK installation. Open-after runs after the complete queue succeeds. Generic launch success does not prove every account, save or app feature works.
 
-Retaining rollback ZIPs is optional; temporary recovery copies are removed after verified success when retention is off. A rollback captures the state immediately before restore, which may be blank. Never clear/uninstall Raven with pending recovery.
+Raven keeps a separate data-only recovery ZIP for each app, capturing its state immediately before restore, which may be blank. These are marked Recovery in Restore and remain until removed in Settings > Backup storage > Manage recovery backups. The popup supports individual selection, Select all and confirmation. They are stored privately and are lost if Raven is uninstalled or its data is cleared. Never clear/uninstall Raven with pending recovery.
 
 ## Delete and Purge
 
@@ -22,8 +22,10 @@ New full backups record the installing package and its signing-certificate hashe
 
 ## Current limits
 
+Device and firmware differences require migration confirmation. See [Migration](MIGRATION.md) and [Recovery backups](RECOVERY.md).
+
 - Only the observed Odin OEM root protocol is implemented; no generic su/Magisk backend.
-- User 0 and eligible non-system/non-shared-UID apps only; same-firmware restore.
+- User 0 and eligible non-system/non-shared-UID apps only; migration requires explicit confirmation.
 - Live metadata checks were demonstrated with SELinux Permissive. Enforcing/cross-firmware restore is unverified; Raven does not change enforcement.
 - No Android Keystore export, account recovery, runtime-permission restoration, store-entitlement transfer, external game-download backup, or general ACL/capability preservation.
 - ZIPs are unencrypted and unauthenticated. Imported data and scripts require trust.
@@ -35,6 +37,6 @@ New full backups record the installing package and its signing-certificate hashe
 
 The manifest requests installed-package visibility, all-files access, reboot reception and battery-optimization exemption. These support app selection, root-script launchers and scheduling. The manifest does not request Internet permission. Android system pickers/keyboards and other apps keep their own appearance.
 
-## Fingerprint spoofing
+## Fingerprint spoofing and migration
 
-New backups record framework and vendor fingerprints separately from the advertised device fingerprint. Matching real base identities, model and Android API allow a spoof-only identity change. Older archives lack that metadata: they require an exact fingerprint, except for the documented Odin 2 stock-318 / Pixel 10 Pro spoof pair, checked against the target stock-318 system/vendor identities and Android 13/API 33. This exception does not allow arbitrary cross-firmware restores. Checksums, APK signatures, versions, ownership, modes and security-label validation still apply.
+New backups record framework and vendor fingerprints separately from the advertised device fingerprint. Matching base identities, model and Android API recognize spoof-only identity changes. Older backups retain their model/API information; a recognized stock-318 spoof pair can match automatically. Other identity changes now trigger migration review. Malformed or incomplete metadata still fails validation. Confirmation does not bypass checksums, APK signatures, versions, ownership, modes or supported security-label rules.

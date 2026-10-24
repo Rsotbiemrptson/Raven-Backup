@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.5.2 — final milestone release (October 24, 2026)
+
+- Give Manage recovery backups the same filled accent button style as Choose backup folder and Purge. Visually verified on the connected Odin 2.
+
+## 1.5.1 — development
+
+- Shorten the migration warning and use Cancel / Continue.
+- Keep standalone per-app recovery ZIPs with recognizable names, Recovery tags and a Recovery restore action.
+- Add Settings > Manage recovery backups with per-backup selection, Select all, dates/sizes and deletion confirmation.
+- Protect pending restores, normal backups, unrelated paths, links and changed recovery files during cleanup.
+- Remove the old optional rollback-retention checkbox; user restores now retain recovery copies until managed deletion.
+
+## 1.5.0 — development
+
+- Record and display backup source manufacturer/model, device name and Android version.
+- Replace device/Android/firmware mismatch rejection with explicit migration review and consent before installation or data replacement.
+- Require acknowledgment for mixed-source restore queues; recheck consent in backend execution.
+- Preserve source metadata, archive and app identity checks, destination ownership/SELinux adaptation and transactional recovery.
+- Older Raven backups retain source display using their existing model/API fields. Real Odin 3 migration is not yet verified.
+
 ## 1.4.1
 
 - Start setup tests only when Run checks is pressed.

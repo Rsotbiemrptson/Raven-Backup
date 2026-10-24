@@ -60,3 +60,15 @@ For isolated validation, `-LocalKeyDirectory` can keep the local development key
 Pass `-PublishFinal` when building the app to verify and publish it to the Workbench's `Final apks` folder. Use `-FinalApkDirectory` for a different destination. This option is rejected for fixture targets. The publisher checks package/version/signing identity, refuses downgrades or certificate changes, and archives superseded APKs for this app without overwriting existing archives or touching unrelated apps. Building without this switch leaves the final folder unchanged.
 
 The publisher can also be called directly with `scripts/publish-apk.ps1 -Apk PATH`. For non-Workbench environments, supply `-BuildToolsDirectory`, `-JavaHome` and `-FinalDirectory`. Keep private keystores outside the public source and release archives.
+
+## Migration identity integration checks
+
+For development 1.5.0, an additional harness compiles the production FirmwareCheck with simulated Android and root-property adapters. It verifies warning/consent behavior without installing an app. The adapters are under `tests/firmware`, outside app sources.
+
+Download the [org.json 20240303 JAR from Maven Central](https://repo.maven.apache.org/maven2/org/json/json/20240303/json-20240303.jar) outside the public source tree. The script verifies SHA-256 `3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed` before using it. This dependency is only for host testing and is not bundled in the APK.
+
+```powershell
+.\scripts\test-firmware.ps1 -JavaHome $env:JAVA_HOME -JsonJar C:\test-dependencies\json-20240303.jar
+```
+
+The ordinary host suite now includes migration policy tests as its sixth group. Neither host suite establishes actual cross-device app compatibility.

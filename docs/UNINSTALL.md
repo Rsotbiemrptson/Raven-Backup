@@ -4,7 +4,7 @@
 
 1. Let any manual backup or restore finish. Do not clear Raven's app data, force-stop it or uninstall it during a restore.
 2. In **Settings > Automatic backups**, choose **Disable schedule** and let any active operation finish.
-3. If a restore was interrupted or Raven reports pending recovery, use **Settings > Device & recovery > Recover pending restore** and wait for verified completion. Raven's private files contain the recovery journal and temporary recovery data; uninstalling or clearing its storage removes those files.
+3. If a restore was interrupted or Raven reports pending recovery, use **Settings > Advanced > Recover pending restore** and wait for verified completion. Raven's private files contain the recovery journal and temporary recovery data; uninstalling or clearing its storage removes those files.
 4. Managed recovery ZIPs in Raven’s private storage will be lost on uninstall. Confirm restored app data before removing Raven; normal shared backups remain separate. See [Recovery backups](RECOVERY.md).
 5. Copy backups you want to keep to a computer or another independent location. Check those copies before deleting originals.
 

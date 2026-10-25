@@ -1,6 +1,6 @@
 package dev.raven.backup;
 import android.content.Context;import android.graphics.*;import android.view.*;
-/** Hue/saturation wheel with a separate value slider in the dialog. */
+/** Hue/saturation wheel; hex input and presets also set its HSV value. */
 final class ColorWheelView extends View {
  interface Changed{void color(int value);} Changed changed;
  final float[] hsv=new float[3];final Paint paint=new Paint(3);final int marker;float cx,cy,radius;

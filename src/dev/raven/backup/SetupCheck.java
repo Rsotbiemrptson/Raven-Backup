@@ -14,7 +14,7 @@ final class SetupCheck {
  static String run(Context context,Progress progress)throws Exception{synchronized(LiveRestore.class){
   LiveRestore live=new LiveRestore(context);BackupEngine engine=live.engine;
   if(live.pointer.exists())throw new IOException("Recover the pending restore before running setup.");
-  if(!Environment.isExternalStorageManager())throw new IOException("Use Settings → Allow internal-storage scripts first.");
+  if(!Environment.isExternalStorageManager())throw new IOException("Use Settings → Allow internal-storage first.");
   if(android.os.Process.myUid()>=100000||!((UserManager)context.getSystemService(Context.USER_SERVICE)).isUserUnlocked())throw new IOException("Unlock the primary device user first.");
   if(installed(engine))throw new IOException("Raven Restore Check is already installed. If a previous setup was interrupted, recover any pending restore, then uninstall Raven Restore Check and retry. No existing app was changed.");
   if(!context.getSharedPreferences("live-restore",0).edit().remove("general-verified").commit())throw new IOException("Could not reset verification before checking.");

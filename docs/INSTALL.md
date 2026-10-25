@@ -1,4 +1,4 @@
-# Installing Raven Backup 1.5.2
+# Installing Raven Backup 1.6.0
 
 ## Before installation
 
@@ -10,7 +10,7 @@ For recovery of existing backups on a wiped device, use [Restore after a factory
 
 ## Install on the device
 
-1. Copy `releases/v1.5.2/RavenBackup-1.5.2.apk` to the device and open it in a file manager. Allow installation from that file manager if Android asks.
+1. Copy `releases/v1.6.0/RavenBackup-1.6.0.apk` to the device and open it in a file manager. Allow installation from that file manager if Android asks.
 2. Open Raven Backup. On a fresh installation, the guided setup appears before the main app.
 3. Choose a backup folder and approve Android's folder request. Use a dedicated folder; Purge in the main app empties that folder completely.
 4. Tap **Allow storage access** if needed, enable access on Android's page, then return to Raven.
@@ -19,7 +19,7 @@ For recovery of existing backups on a wiped device, use [Restore after a factory
 
 Raven does not root a device or install a root manager. A working supported OEM root service is required. Android's own folder and storage approvals must still be confirmed by the user. Setup starts on first **open**, not silently in the background at APK installation.
 
-Existing verified installations keep their settings and open normally after updating. Use **Settings > Guided setup** to review or repeat setup. After factory reset, clear-data, lost folder access or loss of firmware approval, the guided flow is required again. Follow [Factory-reset recovery](FACTORY-RESET.md) for restoring existing APK/data backups and recovering interrupted setup.
+Existing verified installations keep their settings and open normally after updating. Use **Settings > Advanced > Rerun Guided Setup** to review or repeat setup. After factory reset, clear-data, lost folder access or loss of firmware approval, the guided flow is required again. Follow [Factory-reset recovery](FACTORY-RESET.md) for restoring existing APK/data backups and recovering interrupted setup.
 
 For scheduled backups, use **Choose apps & schedule**, select daily/weekly and any charging/idle conditions, then **Allow background backups**. Android decides the actual run time. After reboot, unlock the device once before private-data backups can run.
 
@@ -33,7 +33,7 @@ With Android platform-tools installed and USB debugging authorized:
 
 ```powershell
 adb devices
-adb -s YOUR_SERIAL install -r .\releases\v1.5.2\RavenBackup-1.5.2.apk
+adb -s YOUR_SERIAL install -r .\releases\v1.6.0\RavenBackup-1.6.0.apk
 ```
 
 Choose the intended device serial explicitly, especially when two devices are attached. Open Raven afterward and follow the same setup steps.
@@ -43,10 +43,10 @@ Choose the intended device serial explicitly, especially when two devices are at
 From the repository root:
 
 ```powershell
-Get-FileHash .\releases\v1.5.2\RavenBackup-1.5.2.apk -Algorithm SHA256
+Get-FileHash .\releases\v1.6.0\RavenBackup-1.6.0.apk -Algorithm SHA256
 ```
 
-Compare the result with `releases/v1.5.2/SHA256SUMS.txt`. A matching checksum detects file changes; it is not a substitute for trusting the source of the download.
+Compare the result with `releases/v1.6.0/SHA256SUMS.txt`. A matching checksum detects file changes; it is not a substitute for trusting the source of the download.
 
 ## Migration and recovery backups
 

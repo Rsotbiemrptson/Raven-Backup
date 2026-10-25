@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.6.0 — final milestone release (October 25, 2026)
+
+- Move Settings and a new Raven-family About dialog into a centered three-dot menu.
+- Place equal-width appearance/accent buttons in one row; give settings actions visible accent backgrounds.
+- Use one shared backup/restore folder, display it below the storage buttons, and place button descriptions below their controls.
+- Match Backup/Restore list cards to the sidebar surface and Restore Details buttons to inactive sidebar tabs in light and dark themes.
+- Keep Choose backup folder at half width, reserving the other half for the conditional storage-permission button.
+- Show Allow internal-storage only while all-files access is missing or revoked.
+- Move Purge all backups and its description into Advanced.
+- Make Advanced a card that starts collapsed and expands from its header/chevron.
+- Rename Device & recovery to Advanced, place descriptions below each button, rename Rerun Guided Setup and remove the detached live-restore status line and trailing general note.
+- Clarify storage, recovery and scheduling controls; rename Purge all backups, pair schedule/disable controls, and remove Select all shown.
+- Move Backup refresh to the footer; simplify Restore actions, reorder delete/restore and style Details buttons.
+- Remove the Launchable apps filter.
+- Add a Show selected / Show all toggle, keep results visible above the keyboard, and ignore trailing search whitespace.
+- Preserve selections across searches, fix singular/plural backup counts and show a consistently dimmed inactive backup action.
+- Match the System Control rounded overflow menu.
+- Match the family color picker with other-app presets plus purple/yellow/white, synchronized RGB sliders, wheel/hex input, and no brightness slider.
+
 ## 1.5.2 — final milestone release (October 24, 2026)
 
 - Give Manage recovery backups the same filled accent button style as Choose backup folder and Purge. Visually verified on the connected Odin 2.

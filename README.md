@@ -8,14 +8,16 @@ Raven Backup is an experimental Android app for backing up user-app private data
 
 ## What it does
 
-- Select multiple installed user apps for backup, with a ZIP per app and a history of versions.
+- Select multiple installed user apps for backup, with a ZIP per app and a history of versions. Search for apps one at a time without losing checked selections, then use **Show selected** to review them together.
 - Include the original signed base APK and installed splits, or back up private data only.
-- Choose a local/internal-storage or portable SD destination through Android's folder picker.
+- Choose one local/internal-storage or portable SD folder for both backups and the Restore list. Storage permission is requested only when missing.
 - Name new archives `AppName_MM-DD-YYYY.zip`, with `_2`, `_3`, etc. for additional same-day versions.
 - On verified devices, review and restore a backup or queue different apps in selection order. Each restore checks content, ownership, permissions and SELinux labels. Queues stop on error; earlier successful restores stay restored.
-- Create temporary transaction recovery protection and retain separately tagged per-app recovery ZIPs until deleted in Settings.
-- Delete selected ZIPs, or **Purge everything inside the selected folder, including non-ZIP files and all subfolders**, after confirmation. The selected root folder is kept.
-- Schedule approximate daily/weekly backups and choose light/dark/system appearance with a custom accent color.
+- Create temporary transaction recovery protection and retain separately tagged per-app recovery ZIPs until deleted through **Settings > Backup storage > Manage recovery backups**.
+- Delete selected ZIPs after confirmation. **Settings > Advanced > Purge all backups** can empty the chosen backup folder, including non-ZIP files and all subfolders, after confirmation; the selected root folder is kept.
+- Schedule approximate daily/weekly backups with charging/idle options and optional Android battery-optimization exemption.
+- Choose light, dark or system appearance and customize the accent using a color wheel, RGB sliders, hex input or Raven-family presets.
+- Open **Settings** and **About** from the three-dot menu. The collapsed **Advanced** card contains **Rerun Guided Setup**, backup verification, root-access testing, interrupted-restore recovery and restore rehearsal. First-launch checks start only when **Run checks** is pressed.
 
 ## Supported scope
 
@@ -30,7 +32,7 @@ The app uses Java and Android framework APIs without a Gradle dependency graph. 
 - `src/`, `res/`, `AndroidManifest.xml`: app source and resources.
 - `build.ps1`: portable app/fixture build script.
 - `tests/`: host checks, Android test helper and disposable fixture source.
-- `releases/v1.5.2/`: the current signed APK and checksum.
+- `releases/v1.6.0/`: the current signed APK and checksum.
 - `docs/`: installation, removal, usage, build and validation notes.
 
 ## License and contributions

@@ -7,7 +7,7 @@ final class BackupSchedule {
  static JSONObject configuration(Context c)throws Exception{String json=prefs(c).getString("config",null);return json==null?null:new JSONObject(json);}
  static void enable(Context c,List<String> packages,Uri tree,int days,boolean charging,boolean idle)throws Exception {
   if(days!=1&&days!=7)throw new IOException("Choose a daily or weekly schedule");
-  if(packages.isEmpty()||tree==null)throw new IOException("Choose apps and a backup folder first");if(!Environment.isExternalStorageManager())throw new IOException("Allow internal-storage scripts before scheduling");
+  if(packages.isEmpty()||tree==null)throw new IOException("Choose apps and a backup folder first");if(!Environment.isExternalStorageManager())throw new IOException("Allow internal-storage before scheduling");
   BackupEngine engine=new BackupEngine(c);for(String pkg:packages)engine.info(pkg);
   JSONObject config=new JSONObject().put("packages",new JSONArray(new TreeSet<>(packages))).put("tree",tree.toString()).put("days",days).put("charging",charging).put("idle",idle);
   if(!prefs(c).edit().putString("config",config.toString()).putBoolean("enabled",true).commit())throw new IOException("Cannot save schedule");

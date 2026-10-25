@@ -8,20 +8,6 @@ Raven Backup is an experimental Android app for backing up user-app private data
 
 **Final build for the current milestone.** Adds [device and Android migration warnings](docs/MIGRATION.md), plus [tagged recovery backups and selective cleanup](docs/RECOVERY.md). Simulated migration and recovery tests passed on the Odin 2. Actual Odin 2-to-Odin 3 transfer remains unverified until that hardware is available.
 
-Selected as the [final build for the current milestone](RELEASE-STATUS.md) on October 24, 2026.
-
-> **Guided first launch:** choose a backup folder and approve Android's storage prompts. Press **Run checks** to check root, folder access and existing ZIPs, then verify live restore with a temporary disposable app. A themed **Testing…** popup shows progress; a **Done** popup confirms success. Tap **Continue** to open the main screen. The helper diagnostic screen stays hidden and the test app is removed. Failures stay in setup with a retry option. Already-configured installations open normally; revisit **Settings > Guided setup** any time.
-
-## Download and install
-
-[Download the 1.5.2 APK](https://github.com/Rsotbiemrptson/RavenBackup/releases/download/v1.5.2/RavenBackup-1.5.2.apk) · [GitHub release](https://github.com/Rsotbiemrptson/RavenBackup/releases/tag/v1.5.2)
-
-The current signed APK is [RavenBackup-1.5.2.apk](releases/v1.5.2/RavenBackup-1.5.2.apk). Verify it with [SHA256SUMS.txt](releases/v1.5.2/SHA256SUMS.txt), then follow [Installation](docs/INSTALL.md).
-
-For a wiped device, follow the complete [Restore after a factory reset](docs/FACTORY-RESET.md) guide, including storage permissions, live-restore setup and Play Store sign-in for licensed apps.
-
-Read [Removal and cleanup](docs/UNINSTALL.md) before uninstalling, especially if a restore was interrupted. Keep independent copies of important backups.
-
 ## What it does
 
 - Select multiple installed user apps for backup, with a ZIP per app and a history of versions.

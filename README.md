@@ -32,7 +32,7 @@ The app uses Java and Android framework APIs without a Gradle dependency graph. 
 - `src/`, `res/`, `AndroidManifest.xml`: app source and resources.
 - `build.ps1`: portable app/fixture build script.
 - `tests/`: host checks, Android test helper and disposable fixture source.
-- `releases/v1.6.1/`: the current signed APK and checksum.
+- `releases/v1.6.2/`: the current signed APK and checksum.
 - `docs/`: installation, removal, usage, build and validation notes.
 
 ## License and contributions

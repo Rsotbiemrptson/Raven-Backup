@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.2 — About cleanup (October 25, 2026)
+
+- Remove Source & instructions from About.
+- Show License as underlined accent-colored text without a button background.
+- Include the solid icon-background correction from 1.6.1.
+
 ## 1.6.1 — icon background correction (October 25, 2026)
 
 - Make the app and GitHub icon tile background solid #1F2228, repairing unintended interior transparency.

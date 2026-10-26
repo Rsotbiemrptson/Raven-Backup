@@ -94,3 +94,8 @@ A short-lived independent restore-folder UI was tested during development and re
 A direct pixel edit replaced the connected dark backdrop with exact #1F2228, filled the tile’s unintended interior alpha holes, and preserved the original rounded outer contour/exterior pixels. All 474,247 non-background artwork RGB pixels remained unchanged. The 1254×1254 app and GitHub PNGs are identical. The packaged PNG preserves visible pixels and alpha exactly; Android’s PNG optimizer normalized only two invisible RGB values under zero alpha.
 
 The APK signature matches the retained release identity. Only AndroidManifest.xml and the colored icon PNG differ from 1.6.0 outside signing metadata. classes.dex and the bundled setup-helper APK are byte-identical. The update installed successfully on the Odin 2, and About displayed version 1.6.1 with the corrected icon. A white-background preview confirmed the original rounded shape and opaque tile interior. No app-data operations were performed; earlier backup/restore and host-suite results remain historical.
+
+
+## Version 1.6.2 About cleanup — October 25, 2026
+
+The signed update installed on the Odin 2 and displayed version 1.6.2 in About. Source & instructions is absent. License is a clickable TextView, rendered as underlined readable accent text without a background, and opens the GNU GPL text. The corrected icon is unchanged from 1.6.1. All compiled classes outside MainActivity and the bundled setup helper are byte-identical to 1.6.1. No backup/restore operations were run for this small About change.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.1 — icon background correction (October 25, 2026)
+
+- Make the app and GitHub icon tile background solid #1F2228, repairing unintended interior transparency.
+- Preserve the original rounded outline and the raven, box and green arrow artwork; no backup/restore behavior changes.
+
 ## 1.6.0 — final milestone release (October 25, 2026)
 
 - Move Settings and a new Raven-family About dialog into a centered three-dot menu.

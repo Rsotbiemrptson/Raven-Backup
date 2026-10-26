@@ -87,3 +87,10 @@ All six color presets, RGB slider changes, hex input/readouts, color persistence
 The storage-permission button was hidden with access granted. Revoking all-files access restarted Raven and its existing setup gate displayed Allow storage access; original permission was restored and normal launch/hidden-button state verified. The live missing-permission branch in an existing MainActivity was not directly observed because Android restarted the app. Advanced expansion/collapse, descriptions, Purge location, shared-folder catalog and revised scheduling/storage control placement were checked without starting Purge, scheduling jobs, restoring personal apps or deleting personal backups.
 
 A short-lived independent restore-folder UI was tested during development and removed before this final build; the release uses one backup/restore folder. Prior app-data restore, migration, scheduled-job and reboot results above remain historical rather than newly repeated for 1.6.0. Odin 3, Retroid hardware and Enforcing SELinux remain pending.
+
+
+## Version 1.6.1 icon correction — October 25, 2026
+
+A direct pixel edit replaced the connected dark backdrop with exact #1F2228, filled the tile’s unintended interior alpha holes, and preserved the original rounded outer contour/exterior pixels. All 474,247 non-background artwork RGB pixels remained unchanged. The 1254×1254 app and GitHub PNGs are identical. The packaged PNG preserves visible pixels and alpha exactly; Android’s PNG optimizer normalized only two invisible RGB values under zero alpha.
+
+The APK signature matches the retained release identity. Only AndroidManifest.xml and the colored icon PNG differ from 1.6.0 outside signing metadata. classes.dex and the bundled setup-helper APK are byte-identical. The update installed successfully on the Odin 2, and About displayed version 1.6.1 with the corrected icon. A white-background preview confirmed the original rounded shape and opaque tile interior. No app-data operations were performed; earlier backup/restore and host-suite results remain historical.

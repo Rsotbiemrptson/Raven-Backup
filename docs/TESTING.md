@@ -104,3 +104,8 @@ The signed update installed on the Odin 2 and displayed version 1.6.2 in About. 
 ## Version 1.6.3 About layout — October 25, 2026
 
 Compared Raven Backup directly with the installed Raven System Control About popup on the Odin 2. Retained the stacked branding/text layout, unchanged icon and text sizes, and adjusted the popup width and bottom spacing. The entire description, metadata, full 44dp License touch target and Close button were visible simultaneously, with no scrollable content nodes. The License link still opened the GPL text. Only MainActivity.about changed in Java source; the icon and setup-helper APK are byte-identical to 1.6.2. No app-data operations were performed.
+
+
+## Version 1.6.4 matching popup widths — October 25, 2026
+
+Measured the paragraph on the Odin using the app’s actual theme and TextView at its current density/font scale: 469dp was the minimum outer popup width for three lines. Set About to 480dp for a small margin, 20% narrower than 1.6.3. The description still occupies three lines, the full License touch target and Close button are visible, and no content scrolling is needed. The License popup uses the same shared width constant; device title bounds confirmed identical left/right edges. The full GPL text remains scrollable and its link opens successfully. No app-data operations were performed.

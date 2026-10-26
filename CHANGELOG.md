@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.4 — narrower About popup (October 25, 2026)
+
+- Reduce About from 600dp to 480dp, retaining three description lines and full visibility on the Odin.
+- Match the scrollable License popup to the same 480dp width.
+
 ## 1.6.3 — About layout (October 25, 2026)
 
 - Keep the System Control-style stacked About layout and size the popup so the full text and License link fit without scrolling on the Odin.

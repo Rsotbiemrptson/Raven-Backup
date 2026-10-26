@@ -1,4 +1,4 @@
-# Recovery backups — 1.6.3
+# Recovery backups — 1.6.4
 
 Before a user-initiated restore replaces data, Raven creates and validates a temporary transaction snapshot. It also retains a separate, standalone recovery ZIP for each app, containing the app's data immediately before restore. A newly installed app may have blank data; its recovery backup returns it to that state.
 

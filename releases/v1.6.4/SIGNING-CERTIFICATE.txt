@@ -1,4 +1,4 @@
-Raven Backup 1.6.3 release signing identity
+Raven Backup 1.6.4 release signing identity
 
 Certificate SHA-256:
 75a37f22fe682a8b85221be775a79f0c69d6f973ae8d60ed7924ec5a67a167eb

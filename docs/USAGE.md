@@ -2,7 +2,7 @@
 
 ## Navigation and folders
 
-The top-right three-dot menu contains **Settings** and **About**. About includes the version, build date, creator and an accent-colored License text link.
+The top-right three-dot menu contains **Settings** and **About**. About includes the version, build date, creator and an accent-colored License text link. Its stacked layout fits on the Odin without scrolling.
 
 In Settings > Backup storage, **Choose backup folder** sets the shared folder used for new backups and the Restore list. The selected folder is shown below the buttons and survives app restart. **Allow internal-storage** appears only when all-files access is missing or revoked. It opens Android’s permission page needed for root scripts, and hides again when permission is granted. Settings refreshes when you return to Raven.
 

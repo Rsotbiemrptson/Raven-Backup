@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.3 — About layout (October 25, 2026)
+
+- Keep the System Control-style stacked About layout and size the popup so the full text and License link fit without scrolling on the Odin.
+
 ## 1.6.2 — About cleanup (October 25, 2026)
 
 - Remove Source & instructions from About.

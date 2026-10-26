@@ -99,3 +99,8 @@ The APK signature matches the retained release identity. Only AndroidManifest.xm
 ## Version 1.6.2 About cleanup — October 25, 2026
 
 The signed update installed on the Odin 2 and displayed version 1.6.2 in About. Source & instructions is absent. License is a clickable TextView, rendered as underlined readable accent text without a background, and opens the GNU GPL text. The corrected icon is unchanged from 1.6.1. All compiled classes outside MainActivity and the bundled setup helper are byte-identical to 1.6.1. No backup/restore operations were run for this small About change.
+
+
+## Version 1.6.3 About layout — October 25, 2026
+
+Compared Raven Backup directly with the installed Raven System Control About popup on the Odin 2. Retained the stacked branding/text layout, unchanged icon and text sizes, and adjusted the popup width and bottom spacing. The entire description, metadata, full 44dp License touch target and Close button were visible simultaneously, with no scrollable content nodes. The License link still opened the GPL text. Only MainActivity.about changed in Java source; the icon and setup-helper APK are byte-identical to 1.6.2. No app-data operations were performed.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.5 — Advanced layout and app styling (October 27, 2026)
+
+- Match Gamepad’s surface-colored Advanced buttons, with two actions per row and shorter descriptions.
+- Draw the overflow dots at the center of the button background and clear default button tints.
+- Retain the shared Raven dark/light sidebar and card palette.
+- Keep About focused on Raven Backup by removing the Raven family text.
+
 ## 1.6.4 — narrower About popup (October 25, 2026)
 
 - Reduce About from 600dp to 480dp, retaining three description lines and full visibility on the Odin.

@@ -17,7 +17,7 @@ Raven Backup is an experimental Android app for backing up user-app private data
 - Delete selected ZIPs after confirmation. **Settings > Advanced > Purge all backups** can empty the chosen backup folder, including non-ZIP files and all subfolders, after confirmation; the selected root folder is kept.
 - Schedule approximate daily/weekly backups with charging/idle options and optional Android battery-optimization exemption.
 - Choose light, dark or system appearance and customize the accent using a color wheel, RGB sliders, hex input or Raven-family presets.
-- Open **Settings** and **About** from the three-dot menu. The collapsed **Advanced** card contains **Rerun Guided Setup**, backup verification, root-access testing, interrupted-restore recovery and restore rehearsal. First-launch checks start only when **Run checks** is pressed.
+- Open **Settings** and **About** from the three-dot menu. The collapsed **Advanced** card uses two buttons per row with short descriptions and contains **Rerun Guided Setup**, backup verification, root-access testing, interrupted-restore recovery and restore rehearsal. First-launch checks start only when **Run checks** is pressed.
 
 ## Supported scope
 
@@ -32,7 +32,7 @@ The app uses Java and Android framework APIs without a Gradle dependency graph. 
 - `src/`, `res/`, `AndroidManifest.xml`: app source and resources.
 - `build.ps1`: portable app/fixture build script.
 - `tests/`: host checks, Android test helper and disposable fixture source.
-- `releases/v1.6.4/`: the current signed APK and checksum.
+- `releases/v1.6.5/`: the current signed APK and checksum.
 - `docs/`: installation, removal, usage, build and validation notes.
 
 ## License and contributions

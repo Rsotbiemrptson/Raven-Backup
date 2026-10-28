@@ -1,6 +1,6 @@
-# Device and Android migration — 1.6.4
+# Device and Android migration — 1.6.5
 
-Version 1.6.4 allows user-confirmed migration attempts. It has been tested on the Odin 2 with synthetic source-device/Android metadata, not on the Odin 3 or every Android version.
+Version 1.6.5 allows user-confirmed migration attempts. It has been tested on the Odin 2 with synthetic source-device/Android metadata, not on the Odin 3 or every Android version.
 
 ## Restore behavior
 

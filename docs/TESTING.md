@@ -109,3 +109,9 @@ Compared Raven Backup directly with the installed Raven System Control About pop
 ## Version 1.6.4 matching popup widths — October 25, 2026
 
 Measured the paragraph on the Odin using the app’s actual theme and TextView at its current density/font scale: 469dp was the minimum outer popup width for three lines. Set About to 480dp for a small margin, 20% narrower than 1.6.3. The description still occupies three lines, the full License touch target and Close button are visible, and no content scrolling is needed. The License popup uses the same shared width constant; device title bounds confirmed identical left/right edges. The full GPL text remains scrollable and its link opens successfully. No app-data operations were performed.
+
+## Version 1.6.5 Advanced layout and shared styling — October 27, 2026
+
+Installed the signed update on the Odin 2 without clearing settings. Verified all six Advanced actions in two columns and three rows, with complete short descriptions in dark and light themes. Screenshot pixel checks confirmed Advanced buttons and sidebar use #1F2228 dark / #E9EAF0 light, and cards use #272B32 dark / #FFFFFF light, matching the other Raven apps. The three-dot glyph’s visual center matches the button center. About contains only the Backup description, with no Raven family text, and remains fully visible. Restored the original dark theme and left Advanced open. No backup, restore, purge or recovery actions were executed for this UI patch.
+
+A fresh signed build is byte-for-byte identical to the device-tested APK. All six host suites and the production FirmwareCheck integration harness passed. These host checks use simulated platform identities and do not establish additional device compatibility.

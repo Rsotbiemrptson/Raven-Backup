@@ -1,6 +1,8 @@
 # Raven Backup
 
-<img src="docs/images/icon.png" alt="Raven Backup icon" width="96" />
+<img src="docs/images/icon.png" alt="Raven Backup" width="112">
+
+**Your apps. Your progress.**
 
 Raven Backup is an experimental Android app for backing up user-app private data and, optionally, the original APKs and installed splits. Its root backend was tested on an **AYN Odin 2** using the OEM `PServerBinder` service.
 

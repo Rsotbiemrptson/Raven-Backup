@@ -1,6 +1,6 @@
-# Device and Android migration — 1.6.5
+# Device and Android migration — 1.6.7
 
-Version 1.6.5 allows user-confirmed migration attempts. It has been tested on the Odin 2 with synthetic source-device/Android metadata, not on the Odin 3 or every Android version.
+Version 1.6.7 allows user-confirmed migration attempts. Testing includes synthetic migration/recovery cases on the Odin 2 and real Odin 2 Android 13 backups restored on an Odin 3 running Android 15. This does not establish compatibility with every app or Android version.
 
 ## Restore behavior
 
@@ -26,7 +26,7 @@ These checks verify copied files and metadata, not app-level compatibility. Andr
 
 ## Device support
 
-The root backend remains the OEM PServerBinder protocol. Other devices must expose that compatible service and pass setup; this does not add generic su/Magisk support. Android 11/API 30 is still the minimum installation version. Passing tests on an Odin 2 does not establish Odin 3 firmware or real cross-version behavior.
+The root backend remains the OEM PServerBinder protocol. Other devices must expose that compatible service and pass setup; this does not add generic su/Magisk support. Android 11/API 30 is still the minimum installation version. Thirty compatible app backups passed file and metadata verification on the tested Odin 3 firmware. Five saved installers with only 32-bit libraries were incompatible with its arm64-only runtime. Other firmware and app-level save compatibility need their own testing.
 
 ## Testing
 

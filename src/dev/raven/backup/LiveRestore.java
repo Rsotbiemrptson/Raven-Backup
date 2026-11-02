@@ -15,7 +15,7 @@ final class LiveRestore {
  boolean testing;
  boolean simulateInterruption;
  boolean keepRollback=true;
- boolean launchAfter=true;
+ boolean launchAfter=false;
  static final class Plan {File job;JSONObject manifest;String description,migrationWarning="",migrationKey="",migrationApproval;}
  void reviewEnvironment(Plan plan)throws Exception{plan.migrationWarning=FirmwareCheck.warning(plan.manifest);plan.migrationKey=FirmwareCheck.approvalKey(plan.manifest);}
  void approveMigration(Plan plan){plan.migrationApproval=plan.migrationKey;}

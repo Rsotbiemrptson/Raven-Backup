@@ -35,17 +35,5 @@ final class RestorePreparation {
   }
   BackupEngine.write(new File(job,"manifest.json"),manifest.toString(2));return description.toString();
  }
- static void remapTar(File tar,int oldUid,int newUid)throws Exception {
-  TarGuard.validate(tar);
-  try(RandomAccessFile file=new RandomAccessFile(tar,"rw")){
-   byte[] header=new byte[512];while(file.getFilePointer()<file.length()){
-    long start=file.getFilePointer();file.readFully(header);boolean zero=true;for(byte b:header)if(b!=0){zero=false;break;}if(zero)break;
-    if(TarGuard.oct(header,108,8)!=oldUid||TarGuard.oct(header,116,8)!=oldUid)throw new IOException("Unrecognized tar owner during remapping");
-    long size=TarGuard.oct(header,124,12);byte[] uid=String.format(Locale.ROOT,"%07o",newUid).getBytes("US-ASCII");
-    for(int offset:new int[]{108,116}){Arrays.fill(header,offset,offset+8,(byte)0);System.arraycopy(uid,0,header,offset,uid.length);}
-    Arrays.fill(header,265,329,(byte)0);Arrays.fill(header,148,156,(byte)32);int sum=0;for(byte b:header)sum+=b&255;byte[] checksum=String.format(Locale.ROOT,"%06o",sum).getBytes("US-ASCII");System.arraycopy(checksum,0,header,148,checksum.length);header[154]=0;header[155]=32;
-    file.seek(start);file.write(header);file.seek(start+512+((size+511)/512)*512);
-   }file.getFD().sync();
-  }TarGuard.validate(tar);
- }
+ static void remapTar(File tar,int oldUid,int newUid)throws Exception{TarGuard.remapOwners(tar,oldUid,newUid);}
 }

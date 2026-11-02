@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.6.7 — Odin 3 restore fixes and compatibility reports (November 2, 2026)
+
+- Skip incompatible app installers, installed version/signature mismatches and missing installers, then list each app and reason in the final restore report.
+- Continue other apps after a safe compatibility skip. Data/recovery failures still stop the queue and mark remaining apps as not run.
+- Open apps after restore defaults to off in Settings and both restore confirmation flows; explicitly saved choices remain respected.
+- Split legacy multi-app archive plans into independent app staging jobs, so cleanup of one restore cannot remove another app’s pending files.
+- Include the long-filename, owner-remapping and ART profile-label fixes tested in 1.6.6 below.
+
+## 1.6.6 — long filename restore fix (in testing, November 2, 2026)
+
+- Accept validated GNU long-filename TAR headers created by ordinary app-data backups, preserving actual file paths for verification. Links, unsupported metadata and unsafe paths remain rejected.
+- Include the backup filename when queue import fails.
+- Preserve bounded GNU filename metadata during UID remapping and support observed nested ART profile paths under app_pccache.
+- Odin 3 / Android 15 live test: 30 compatible backups restored with file/metadata verification; five 32-bit-only installers were incompatible with the device.
+
 ## 1.6.5 — Advanced layout and app styling (October 27, 2026)
 
 - Match Gamepad’s surface-colored Advanced buttons, with two actions per row and shorter descriptions.

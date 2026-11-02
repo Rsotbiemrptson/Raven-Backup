@@ -1,0 +1,7 @@
+package dev.raven.backup;
+import java.io.*;import java.util.*;import java.util.zip.*;
+public class ApkCompatibilityTest {
+ static File apk(String name,String... libs)throws Exception{File f=new File("work/"+name+".apk");try(ZipOutputStream out=new ZipOutputStream(new FileOutputStream(f))){for(String path:libs){out.putNextEntry(new ZipEntry(path));out.write(new byte[]{1});out.closeEntry();}}return f;}
+ static void check(boolean b){if(!b)throw new AssertionError();}
+ public static void main(String[] args)throws Exception{String[] arm64={"arm64-v8a"};File old=apk("old","lib/armeabi-v7a/game.so"),modern=apk("modern","lib/arm64-v8a/game.so"),java=apk("java","classes.dex");check(ApkCompatibility.nativeReason(Arrays.asList(old),arm64).contains("armeabi-v7a"));check(ApkCompatibility.nativeReason(Arrays.asList(modern),arm64)==null);check(ApkCompatibility.nativeReason(Arrays.asList(java),arm64)==null);check(ApkCompatibility.nativeReason(Arrays.asList(old,modern),arm64)==null);check(ApkCompatibility.installReason("Failure [INSTALL_FAILED_NO_MATCHING_ABIS]")!=null);check(ApkCompatibility.installReason("INSTALL_FAILED_DEPRECATED_SDK_VERSION")!=null);check(ApkCompatibility.installReason("INSTALL_FAILED_INSUFFICIENT_STORAGE")==null);check(ApkCompatibility.installReason("Root permission denied")==null);System.out.println("PASS installer ABI compatibility, Java-only/splits and narrow Android rejection classification");}
+}

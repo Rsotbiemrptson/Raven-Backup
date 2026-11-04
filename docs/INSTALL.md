@@ -1,4 +1,4 @@
-# Installing Raven Backup 1.6.7
+# Installing Raven Backup 1.6.8
 
 ## Before installation
 
@@ -10,12 +10,14 @@ For recovery of existing backups on a wiped device, use [Restore after a factory
 
 ## Install on the device
 
-1. Copy `releases/v1.6.7/RavenBackup-1.6.7.apk` to the device and open it in a file manager. Allow installation from that file manager if Android asks.
+1. Copy `releases/v1.6.8/RavenBackup-1.6.8.apk` to the device and open it in a file manager. Allow installation from that file manager if Android asks.
 2. Open Raven Backup. On a fresh installation, the guided setup appears before the main app.
 3. Choose a backup folder and approve Android's folder request. Use a dedicated folder; Purge in the main app empties that folder completely.
 4. Tap **Allow storage access** if needed, enable access on Android's page, then return to Raven.
-5. Press **Run checks**. A themed **Testing…** popup shows progress while Raven checks root, folder operations, existing archives and full backup/restore using its bundled disposable helper. The helper diagnostic screen stays hidden and it is removed afterward. The themed **Done** popup confirms **Checks passed**; tap **Continue** to enter the app with restore enabled. Failures show an explanation and a retry action. These checks do not change your other apps or original ZIPs.
+5. Press **Run checks**. A themed **Testing…** popup shows progress while Raven checks root, folder operations and full backup/restore using its bundled disposable helper. The helper diagnostic screen stays hidden and it is removed afterward. The themed **Done** popup confirms **Checks passed**; tap **Continue** to enter the app with restore enabled. Failures show an explanation and a retry action. These checks do not change your other apps or original ZIPs.
 6. Make a small backup and keep an independent copy before relying on the app.
+
+Existing archives are fully checked when selected for restore, rather than during setup. An unreadable or invalid backup cannot block device setup. Use **Settings > Advanced > Verify backup folder** for an optional full scan. Failed backups are flagged with reasons and can be selected for confirmed deletion.
 
 Raven does not root a device or install a root manager. A working supported OEM root service is required. Android's own folder and storage approvals must still be confirmed by the user. Setup starts on first **open**, not silently in the background at APK installation.
 
@@ -33,7 +35,7 @@ With Android platform-tools installed and USB debugging authorized:
 
 ```powershell
 adb devices
-adb -s YOUR_SERIAL install -r .\releases\v1.6.7\RavenBackup-1.6.7.apk
+adb -s YOUR_SERIAL install -r .\releases\v1.6.8\RavenBackup-1.6.8.apk
 ```
 
 Choose the intended device serial explicitly, especially when two devices are attached. Open Raven afterward and follow the same setup steps.
@@ -43,10 +45,10 @@ Choose the intended device serial explicitly, especially when two devices are at
 From the repository root:
 
 ```powershell
-Get-FileHash .\releases\v1.6.7\RavenBackup-1.6.7.apk -Algorithm SHA256
+Get-FileHash .\releases\v1.6.8\RavenBackup-1.6.8.apk -Algorithm SHA256
 ```
 
-Compare the result with `releases/v1.6.7/SHA256SUMS.txt`. A matching checksum detects file changes; it is not a substitute for trusting the source of the download.
+Compare the result with `releases/v1.6.8/SHA256SUMS.txt`. A matching checksum detects file changes; it is not a substitute for trusting the source of the download.
 
 ## Migration and recovery backups
 

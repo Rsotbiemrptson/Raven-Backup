@@ -1,6 +1,6 @@
-# Device and Android migration — 1.6.7
+# Device and Android migration — 1.6.8
 
-Version 1.6.7 allows user-confirmed migration attempts. Testing includes synthetic migration/recovery cases on the Odin 2 and real Odin 2 Android 13 backups restored on an Odin 3 running Android 15. This does not establish compatibility with every app or Android version.
+Version 1.6.8 allows user-confirmed migration attempts. Testing includes synthetic migration/recovery cases on the Odin 2 and real Odin 2 Android 13 backups restored on an Odin 3 running Android 15. This does not establish compatibility with every app or Android version.
 
 ## Restore behavior
 

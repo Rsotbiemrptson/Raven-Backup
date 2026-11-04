@@ -61,7 +61,7 @@ public final class SetupActivity extends Activity {
   if(!error.isEmpty()){TextView problem=label(error,14,text);problem.setPadding(0,dp(8),0,dp(12));add(body,problem,-2);}
   step("1. Backup folder",folderReady?BackupEngine.folderName(tree):"Choose an existing backup folder or create a dedicated one.",folderReady);
   step("2. Storage access",storage?"Internal-storage scripts are allowed.":"Allow access so Raven can create its backup scripts.",storage);
-  step("3. Device checks",busy?stage:verified?"Folder, root access and live restore are ready.":"Press Run checks to test root, folder access, existing ZIPs and a full restore using a disposable app.",verified);
+  step("3. Device checks",busy?stage:verified?"Folder, root access and live restore are ready.":"Press Run checks to test root, folder access and a full restore using a disposable app.",verified);
   add(body,label("The checks temporarily install Raven Restore Check, verify backup, rollback, reinstall, data and file permissions, then remove it. Your other apps and backup ZIPs are not changed. Keep the device unlocked until setup finishes.",13,muted),-2);gap(body,8);
   actions=column();gap(root,8);add(root,actions,-2);
   if(busy){ProgressBar progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setIndeterminate(true);progress.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(AppearanceColors.readable(accent,card)));add(actions,progress,6);gap(actions,10);add(actions,label(stage,14,text),-2);return;}
@@ -107,7 +107,7 @@ public final class SetupActivity extends Activity {
   if(!flow.edit().putBoolean("running",true).putBoolean("needsCheck",true).putBoolean("requested",false).commit()){error="Could not save setup progress. Restart Raven and retry.";render();return;}
   busy=true;requested=false;error="";stage="Checking root access…";render();showTesting();Uri checkedTree=tree;
   new Thread(()->{String failure=null;try{synchronized(LiveRestore.class){
-   String root=new BackupEngine(this).probe();progress("Checking backup folder and existing ZIPs…");String library=LibraryCheck.run(this,checkedTree);
+   String root=new BackupEngine(this).probe();progress("Checking backup folder access…");String library=LibraryCheck.folderAccess(this,checkedTree);
    progress("Verifying backup and restore with the test app…");String restore=SetupCheck.run(this,this::progress);report=root+"\n"+library+"\n"+restore;
    if(!flow.edit().putString("report",report).putString("verifiedTree",checkedTree.toString()).putBoolean("running",false).putBoolean("needsCheck",false).putBoolean("completionPending",true).commit())throw new IOException("Could not save completed setup.");
    mainPrefs(this).edit().putString("lastOperation","Setup complete. Backup folder, root and live restore checks passed.").apply();

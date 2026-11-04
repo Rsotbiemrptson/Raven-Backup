@@ -3,7 +3,7 @@ import android.content.*;import android.database.Cursor;import android.net.Uri;i
 
 /** Lightweight directory catalog; full validation happens only when preparing a restore. */
 final class BackupCatalog {
- static final class Entry {Uri uri;String name;long size,modified;JSONObject manifest;String problem;boolean recovery,privateRecovery;}
+ static final class Entry {Uri uri;String name;long size,modified;JSONObject manifest;String problem,validationProblem;boolean recovery,privateRecovery;}
  static List<Entry> list(Context context,Uri tree)throws Exception {
   List<Entry> result=RecoveryStore.entries(context);if(tree!=null)scan(context,tree,DocumentsContract.getTreeDocumentId(tree),0,new HashSet<>(),result);
   return read(context,result);
@@ -13,7 +13,7 @@ final class BackupCatalog {
   result.sort((a,b)->Long.compare(b.modified,a.modified));
   for(Entry entry:result){try(InputStream stream=context.getContentResolver().openInputStream(entry.uri);ZipInputStream zip=new ZipInputStream(stream)){
     ZipEntry first=zip.getNextEntry();if(first==null||!first.getName().equals("manifest.json"))throw new IOException("Import to inspect this ZIP");ByteArrayOutputStream out=new ByteArrayOutputStream();BackupEngine.copy(zip,out,1024*1024);entry.manifest=new JSONObject(out.toString("UTF-8"));if((entry.manifest.getInt("format")!=1&&entry.manifest.getInt("format")!=2)||entry.manifest.getJSONArray("apps").length()==0)throw new IOException("Unknown archive format");entry.recovery=entry.privateRecovery||"recovery".equals(entry.manifest.optString("backupType"));
-   }catch(Exception e){entry.problem="Import to inspect";entry.manifest=null;}}
+   }catch(Exception e){entry.problem="Import to inspect";entry.manifest=null;}BackupIssues.load(context,entry);}
   return result;
  }
  static void scan(Context context,Uri tree,String id,int depth,Set<String> seen,List<Entry> result)throws Exception {

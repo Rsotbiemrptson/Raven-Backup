@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.8 — faster setup and failed-backup review (November 4, 2026)
+
+- Guided setup checks root, folder operations and disposable-app backup/restore without scanning existing archives.
+- Fully validate selected backups before restore; failed archives can be skipped while other selected backups proceed to review.
+- Show failed validations with reasons and a persistent Check failed flag. Select failed files for optional deletion, with the existing file-change and location checks and a separate confirmation.
+- Verify backup folder remains available in Advanced for an optional full scan; report all failed archives instead of stopping at the first.
+
+
 ## 1.6.7 — Odin 3 restore fixes and compatibility reports (November 2, 2026)
 
 - Skip incompatible app installers, installed version/signature mismatches and missing installers, then list each app and reason in the final restore report.

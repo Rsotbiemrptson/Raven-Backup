@@ -1,6 +1,6 @@
 # Restore after a factory reset
 
-These steps apply to Raven Backup 1.6.7 on a compatible Odin 2 or Odin 3. A factory reset removes Raven's settings, folder permissions and live-restore approval. Install Raven and run setup again before restoring.
+These steps apply to Raven Backup 1.6.8 on a compatible Odin 2 or Odin 3. A factory reset removes Raven's settings, folder permissions and live-restore approval. Install Raven and run setup again before restoring.
 
 ## Before resetting
 
@@ -11,10 +11,10 @@ These steps apply to Raven Backup 1.6.7 on a compatible Odin 2 or Odin 3. A fact
 ## Set up Raven on the wiped device
 
 1. Complete Android setup and unlock the primary device user. Copy your backup folder back to the device, or connect the storage containing it. Keep the separate backup copy until recovery is complete.
-2. Install **RavenBackup-1.6.7.apk** and open Raven. First launch shows **Raven Backup setup** before the main app. Allow APK installation from your file manager if Android asks. ADB is optional.
+2. Install **RavenBackup-1.6.8.apk** and open Raven. First launch shows **Raven Backup setup** before the main app. Allow APK installation from your file manager if Android asks. ADB is optional.
 3. Tap **Choose backup folder**. Select your existing backups or a dedicated folder and approve Android's folder-access confirmation. The picker starts in Documents; use its navigation to select an SD card or another location if needed.
 4. Tap **Allow storage access** if needed. Enable access for Raven Backup on Android's all-files access page, then go back. Android requires the user to approve these prompts; Raven cannot grant them automatically.
-5. Press **Run checks**. A themed **Testing…** popup shows progress while Raven tests root, folder read/write/rename/delete access and existing ZIPs, then installs its bundled **Raven Restore Check** helper to verify backup, controlled failure/rollback, saved-APK reinstall, changed app ownership, permission modes, security labels and app reads. The helper runs with its diagnostic screen hidden. Keep the device unlocked; your other apps and backup ZIPs are not changed by this check.
+5. Press **Run checks**. A themed **Testing…** popup shows progress while Raven tests root, folder read/write/rename/delete access, then installs its bundled **Raven Restore Check** helper to verify backup, controlled failure/rollback, saved-APK reinstall, changed app ownership, permission modes, security labels and app reads. The helper runs with its diagnostic screen hidden. Keep the device unlocked; your other apps and backup ZIPs are not changed by this check.
 6. After success, Raven removes the helper and shows a themed **Done** popup saying **Checks passed**. Tap **Continue** to open the main app. Restore is enabled on this installation and firmware. You do not need to press separate root, folder or live-restore test buttons.
 
 If a permission is declined or folder selection is cancelled, setup keeps the current progress and explains the next step. If a check fails, fix the stated issue and tap **Retry checks**, or choose a different folder. An invalid ZIP is named in the error and is not automatically deleted. Raven does not enter the main app before the required setup passes.

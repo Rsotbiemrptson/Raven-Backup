@@ -1,19 +1,18 @@
 # Final build for the current milestone
 
-Selected November 4, 2026: **Raven Backup 1.6.8**, version code **31**, package `dev.raven.backup`.
+Selected November 6, 2026. Raven Backup 1.6.9, version code 32, package `dev.raven.backup`.
 
-Guided setup checks root access, folder operations and disposable-app backup/restore without scanning existing archives. Selected archives are fully validated before restore. Failed backups are flagged with reasons and can be skipped or selected for a separate deletion confirmation. Advanced retains an optional full-library scan.
+- **Report an issue** in the three-dot menu opens an editable GitHub form with the app version and prompts for test details.
+- **Data-only restore across signing certificates** is available with explicit approval when the installed app has the same package ID and version code. Raven keeps the installed APK and creates a recovery backup before replacing data. Queues skip differently signed apps unless approved.
 
-- [Final APK](releases/v1.6.8/RavenBackup-1.6.8.apk)
-- [Checksum](releases/v1.6.8/SHA256SUMS.txt)
+Tested on Odin 3 with two disposable apps. The single restore passed after confirmation. The queue skipped a differently signed app by default, then restored both fixtures with approval. The fixtures independently read their original files and preferences. The destination APK hash stayed identical. The GitHub form opened with version 1.6.9 and was cancelled. All eight host suites and FirmwareCheck integration passed.
+
+Install the signed APK over Raven Backup to keep settings and permissions. After a fresh install or factory reset, choose your backup folder and run guided setup.
+
+- [Final APK](releases/v1.6.9/RavenBackup-1.6.9.apk)
+- [Checksum](releases/v1.6.9/SHA256SUMS.txt)
 - [Installation](docs/INSTALL.md)
 - [Factory-reset recovery](docs/FACTORY-RESET.md)
-- [Migration](docs/MIGRATION.md)
-- [Recovery backup management](docs/RECOVERY.md)
-- [Removal](docs/UNINSTALL.md)
+- [Testing](docs/TESTING.md)
 
-SHA-256: `365cc3496c9a16501175aee7ef856ba4fa3b41efc1dec106c146ce8d23ed5e7f`
-
-The final signed rebuild matches the APK tested on the Odin 3 byte for byte. Guided setup passed with an invalid test ZIP present; single-backup failure reporting, persistent flags, mixed-queue continuation to review and confirmed deletion of only the synthetic ZIP passed. All 41 remaining personal backup paths were preserved. All eight host suites and FirmwareCheck integration passed. Detailed evidence and historical restore testing are in [Testing](docs/TESTING.md).
-
-The complete personal library was not rescanned for this release, and no personal app-data restore was performed for this change. Game-level progress and account access need manual confirmation. Retroid hardware, other untested firmware and Enforcing SELinux remain unverified. Compatible OEM PServerBinder access is required.
+APK SHA-256 `e199b0e68abe883cb0f518216a74372ac2f6a2a53ca95a30d31dc0c1310795c3`

@@ -16,7 +16,7 @@ final class LiveRestore {
  boolean simulateInterruption;
  boolean keepRollback=true;
  boolean launchAfter=false;
- static final class Plan {File job;JSONObject manifest;String description,migrationWarning="",migrationKey="",migrationApproval;}
+ static final class Plan {File job;JSONObject manifest;String description,migrationWarning="",migrationKey="",migrationApproval;final Map<String,String> approvedSigners=new HashMap<>();}
  void reviewEnvironment(Plan plan)throws Exception{plan.migrationWarning=FirmwareCheck.warning(plan.manifest);plan.migrationKey=FirmwareCheck.approvalKey(plan.manifest);}
  void approveMigration(Plan plan){plan.migrationApproval=plan.migrationKey;}
  LiveRestore(Context context){engine=new BackupEngine(context);pointer=new File(context.getFilesDir(),"live-pending.json");}
@@ -34,7 +34,7 @@ final class LiveRestore {
  }
  Plan prepare(Plan plan,Set<String> packages)throws Exception {
   if(packages!=null){JSONArray filtered=new JSONArray();Set<String> found=new HashSet<>();JSONArray apps=plan.manifest.getJSONArray("apps");for(int i=0;i<apps.length();i++){JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");if(packages.contains(pkg)){filtered.put(app);found.add(pkg);}}if(filtered.length()==0||!found.equals(packages))throw new IOException("Selected apps are absent from this backup");plan.manifest.put("apps",filtered);}
-  plan.description=RestorePreparation.prepare(engine,plan.job,plan.manifest);if(plan.migrationWarning.isEmpty())plan.description=FirmwareCheck.source(plan.manifest)+"\n\n"+plan.description;compatible(plan.manifest);return plan;
+  plan.description=RestorePreparation.prepare(engine,plan.job,plan.manifest,plan.approvedSigners);if(plan.migrationWarning.isEmpty())plan.description=FirmwareCheck.source(plan.manifest)+"\n\n"+plan.description;compatible(plan.manifest);return plan;
  }
  String restore(Plan plan,boolean keep,boolean launch)throws Exception{synchronized(LiveRestore.class){keepRollback=keep;launchAfter=launch;return restoreInternal(plan,false);}}
  static void durable(File f,String text)throws Exception{
@@ -140,6 +140,16 @@ final class LiveRestore {
   // Re-import the rollback ZIP to check manifest, CRC and hashes before any live deletion.
   File zip=new File(rollback,"rollback.zip");engine.zip(rollback,snapshot,new FileOutputStream(zip));try(RandomAccessFile file=new RandomAccessFile(zip,"rw")){file.getFD().sync();}
   File verifiedRollback=engine.job();try(InputStream in=new FileInputStream(zip)){snapshot=engine.unpack(in,verifiedRollback);}preflight(verifiedRollback,snapshot);
+  // The verified recovery snapshot must belong to the same installation the user approved.
+  if(!plan.approvedSigners.isEmpty()){
+   JSONArray rollbackApps=snapshot.getJSONArray("apps");
+   for(int i=0;i<rollbackApps.length();i++){
+    JSONObject installed=rollbackApps.getJSONObject(i);
+    String pkg=installed.getString("package"),approved=plan.approvedSigners.get(pkg);
+    if(approved!=null&&!approved.equals(RestorePreparation.destinationIdentity(installed)))
+     throw new IOException("Installed app changed while preparing recovery: "+pkg);
+   }
+  }
   String exported=keepRollback?RecoveryStore.save(engine,verifiedRollback,snapshot):"temporary recovery copy";File control=engine.job();JSONObject record=new JSONObject().put("control",control.getPath()).put("rollback",verifiedRollback.getPath()).put("zip",zip.getPath()).put("exported",exported).put("keepRollback",keepRollback).put("incoming",incoming.getPath()).put("rollbackRegularFiles",rollbackFiles).put("manifest",snapshot);
   durable(new File(engine.c.getFilesDir(),"live-last.json"),record.toString(2));
   durable(pointer,record.toString(2));durable(new File(control,"state"),"prepared");

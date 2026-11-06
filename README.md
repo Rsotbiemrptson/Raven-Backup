@@ -19,13 +19,14 @@ Raven Backup is an experimental Android app for backing up user-app private data
 - Delete selected ZIPs after confirmation. **Settings > Advanced > Purge all backups** can empty the chosen backup folder, including non-ZIP files and all subfolders, after confirmation; the selected root folder is kept.
 - Schedule approximate daily/weekly backups with charging/idle options and optional Android battery-optimization exemption.
 - Choose light, dark or system appearance and customize the accent using a color wheel, RGB sliders, hex input or Raven-family presets.
-- Open **Settings** and **About** from the three-dot menu. The collapsed **Advanced** card uses two buttons per row with short descriptions and contains **Rerun Guided Setup**, backup verification, root-access testing, interrupted-restore recovery and restore rehearsal. First-launch checks start only when **Run checks** is pressed. Setup tests the device and folder without scanning existing backups. Selected archives are fully validated before restore; failed backups are flagged with reasons and can be selected for confirmed deletion. A full library scan is available on demand in Advanced.
+- Approve a data-only restore to a differently signed copy with the same package ID and version code. Raven keeps the installed APK and creates a recovery copy.
+- Open **Settings**, **About** and **Report an issue** from the three-dot menu. Issue reports open on GitHub with the app version filled in. The collapsed **Advanced** card uses two buttons per row with short descriptions and contains **Rerun Guided Setup**, backup verification, root-access testing, interrupted-restore recovery and restore rehearsal. First-launch checks start only when **Run checks** is pressed. Setup tests the device and folder without scanning existing backups. Selected archives are fully validated before restore; failed backups are flagged with reasons and can be selected for confirmed deletion. A full library scan is available on demand in Advanced.
 
 ## Supported scope
 
 Android 11/API 30 is the minimum declared version. The demonstrated root backend and live restore were tested on two Odin 2 devices (stock 318 and a stock-318-based fingerprint-spoofed build) with **SELinux Permissive**. Odin 2 Android 13 backups were also restored on an Odin 3 running Android 15/API 35. Enforcing SELinux, other untested devices/firmware, secondary users, system apps and shared-UID apps are not established as supported. A similarly named Run as root option on another device is not evidence of compatibility.
 
-Only use backups you trust: ZIPs are unencrypted and not cryptographically authenticated. Android Keystore keys, store entitlement, accounts, runtime grants, external game downloads, ACLs and arbitrary filesystem capabilities are not reproduced by copying private files/APKs. Device, Android-version or firmware differences require a migration warning and explicit confirmation. Archive integrity, app version/signatures, destination ownership and supported security-label checks remain required. Real cross-device/OS behavior is app-dependent; successful file verification does not prove game progress or account access. Google Play still checks real account entitlement. See [Usage and limits](docs/USAGE.md).
+Only use backups you trust: ZIPs are unencrypted and not cryptographically authenticated. Android Keystore keys, store entitlement, accounts, runtime grants, external game downloads, ACLs and arbitrary filesystem capabilities are not reproduced by copying private files/APKs. Device, Android-version or firmware differences require a migration warning and explicit confirmation. Archive integrity, app package and version, signing review, destination ownership and supported security-label checks remain required. Real cross-device/OS behavior is app-dependent; successful file verification does not prove game progress or account access. Google Play still checks real account entitlement. See [Usage and limits](docs/USAGE.md).
 
 ## Source and building
 
@@ -34,7 +35,7 @@ The app uses Java and Android framework APIs without a Gradle dependency graph. 
 - `src/`, `res/`, `AndroidManifest.xml`: app source and resources.
 - `build.ps1`: portable app/fixture build script.
 - `tests/`: host checks, Android test helper and disposable fixture source.
-- `releases/v1.6.8/`: the current signed APK and checksum.
+- `releases/v1.6.9/`: the current signed APK and checksum.
 - `docs/`: installation, removal, usage, build and validation notes.
 
 ## License and contributions

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.9 — issue reporting and signature overrides (November 6, 2026)
+
+- Allow explicit data-only restore to an installed app with the same package ID and version code but a different signing certificate.
+
+- Open a GitHub issue draft from the three-dot menu. The draft includes the Raven Backup version and prompts for test details.
+
 ## 1.6.8 — faster setup and failed-backup review (November 4, 2026)
 
 - Guided setup checks root, folder operations and disposable-app backup/restore without scanning existing archives.

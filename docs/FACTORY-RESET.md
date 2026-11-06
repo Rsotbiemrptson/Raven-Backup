@@ -1,6 +1,6 @@
 # Restore after a factory reset
 
-These steps apply to Raven Backup 1.6.8 on a compatible Odin 2 or Odin 3. A factory reset removes Raven's settings, folder permissions and live-restore approval. Install Raven and run setup again before restoring.
+These steps apply to Raven Backup 1.6.9 on a compatible Odin 2 or Odin 3. A factory reset removes Raven's settings, folder permissions and live-restore approval. Install Raven and run setup again before restoring.
 
 ## Before resetting
 
@@ -11,7 +11,7 @@ These steps apply to Raven Backup 1.6.8 on a compatible Odin 2 or Odin 3. A fact
 ## Set up Raven on the wiped device
 
 1. Complete Android setup and unlock the primary device user. Copy your backup folder back to the device, or connect the storage containing it. Keep the separate backup copy until recovery is complete.
-2. Install **RavenBackup-1.6.8.apk** and open Raven. First launch shows **Raven Backup setup** before the main app. Allow APK installation from your file manager if Android asks. ADB is optional.
+2. Install **RavenBackup-1.6.9.apk** and open Raven. First launch shows **Raven Backup setup** before the main app. Allow APK installation from your file manager if Android asks. ADB is optional.
 3. Tap **Choose backup folder**. Select your existing backups or a dedicated folder and approve Android's folder-access confirmation. The picker starts in Documents; use its navigation to select an SD card or another location if needed.
 4. Tap **Allow storage access** if needed. Enable access for Raven Backup on Android's all-files access page, then go back. Android requires the user to approve these prompts; Raven cannot grant them automatically.
 5. Press **Run checks**. A themed **Testing…** popup shows progress while Raven tests root, folder read/write/rename/delete access, then installs its bundled **Raven Restore Check** helper to verify backup, controlled failure/rollback, saved-APK reinstall, changed app ownership, permission modes, security labels and app reads. The helper runs with its diagnostic screen hidden. Keep the device unlocked; your other apps and backup ZIPs are not changed by this check.
@@ -26,7 +26,7 @@ Already-configured installations skip the wizard on normal launches and updates.
 ## Restore your apps
 
 1. Open **Restore** and choose a backup version with **Review & restore**, or select different apps and use **Restore selected**. Choose only one backup version per app in a queue.
-2. If an app is absent and its backup includes APKs, review and confirm **Install missing apps from backup**. For a data-only backup, first install the matching app version and signing identity yourself. Use only backups you trust.
+2. If an app is absent and its backup includes APKs, review and confirm **Install missing apps from backup**. For a data-only backup, first install an app with the matching package ID and version code. A different signing certificate requires explicit approval for data-only restore. Use only backups you trust.
 3. Review the apps and confirm **Restore**. Raven stops affected apps, keeps a temporary recovery copy and checks the restored files and metadata. Queues stop on error; earlier successful restores remain restored.
 4. Wait for the completion popup, then open the apps and check their data. Keep your original backup ZIPs. Raven retains a data-only recovery ZIP for each app. After confirming restored data, use **Settings > Backup storage > Manage recovery backups** to select and delete those copies.
 5. Sign back into Google Play with the account that owns any paid/licensed apps. On the wiped Odin test, Super Meat Boy Forever's save files restored correctly before sign-in, and the owner confirmed the game worked after signing into Play Store. A backup does not transfer store entitlement or replace sign-in. Some apps also need permissions granted again, account login or additional downloads.

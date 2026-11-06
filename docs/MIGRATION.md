@@ -1,6 +1,6 @@
-# Device and Android migration — 1.6.8
+# Device and Android migration — 1.6.9
 
-Version 1.6.8 allows user-confirmed migration attempts. Testing includes synthetic migration/recovery cases on the Odin 2 and real Odin 2 Android 13 backups restored on an Odin 3 running Android 15. This does not establish compatibility with every app or Android version.
+Version 1.6.9 allows user-confirmed migration attempts. Testing includes synthetic migration/recovery cases on the Odin 2 and real Odin 2 Android 13 backups restored on an Odin 3 running Android 15. This does not establish compatibility with every app or Android version.
 
 ## Restore behavior
 
@@ -18,7 +18,7 @@ A firmware/model difference is a warning; malformed or incomplete identity metad
 
 ## What remains checked
 
-The destination installation must first pass guided setup on its own firmware. Only user-0 user apps are supported. APKs must pass Android installation, and installed app versions and signing identities must match the backup. Archives, paths, CRCs, hashes, regular-file types, ownership and modes are checked. Ordinary app-owned files are mapped to the destination app UID and ordinary app-data SELinux context. Unrecognized labels, shared UIDs, system apps and special ownership are rejected. Raven does not relax SELinux enforcement.
+The destination installation must first pass guided setup on its own firmware. Only user-0 user apps are supported. APKs must pass Android installation. An installed app must have the same package ID and version code as the backup. If its signing certificate differs, Raven asks for explicit approval to restore data into the installed copy. Only approve a copy you trust. Some apps may be unable to read data written by another signing identity. Archives, paths, CRCs, hashes, regular-file types, ownership and modes are checked. Ordinary app-owned files are mapped to the destination app UID and ordinary app-data SELinux context. Unrecognized labels, shared UIDs, system apps and special ownership are rejected. Raven does not relax SELinux enforcement.
 
 App root directories and their encryption policy are retained. Each restore still creates and verifies a temporary recovery snapshot before replacing data. Recovery restores a snapshot taken on the destination firmware; migration consent does not bypass that check. A separate recovery ZIP is retained for each app until deleted through Settings. See [Recovery backups](RECOVERY.md).
 

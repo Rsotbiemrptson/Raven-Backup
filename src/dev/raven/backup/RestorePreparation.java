@@ -6,15 +6,27 @@ import java.util.*;
 
 /** Adapts only ordinary app-owned data to the current installed identity. */
 final class RestorePreparation {
- static String prepare(BackupEngine engine,File job,JSONObject manifest)throws Exception {
+ static boolean sameSigners(JSONObject saved,JSONObject installed)throws JSONException {
+  return saved.getJSONArray("signers").toString().equals(installed.getJSONArray("signers").toString());
+ }
+ static String destinationIdentity(JSONObject installed)throws JSONException {
+  return installed.getString("package")+":"+installed.getInt("uid")+":"
+   +installed.getLong("version")+":"+installed.getJSONArray("signers");
+ }
+ static String prepare(BackupEngine engine,File job,JSONObject manifest,Map<String,String> approvedSigners)throws Exception {
   FirmwareCheck.validate(manifest);
   StringBuilder description=new StringBuilder();JSONArray apps=manifest.getJSONArray("apps");
   for(int i=0;i<apps.length();i++){
    JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");JSONObject current=engine.info(pkg);
    if(current.getLong("version")!=app.getLong("version"))throw new IOException("App version differs for "+pkg+". Install the backed-up version first.");
-   if(!current.getJSONArray("signers").toString().equals(app.getJSONArray("signers").toString()))throw new IOException("Signing identity differs for "+pkg);
+   String approved=approvedSigners.get(pkg);
+   boolean differentSignature=!sameSigners(app,current);
+   if(approved!=null&&!approved.equals(destinationIdentity(current)))
+    throw new IOException("Installed app changed after signature review: "+pkg);
+   if(differentSignature&&approved==null)throw new IOException("Signing identity differs for "+pkg);
    int oldUid=app.getInt("uid"),newUid=current.getInt("uid");if(oldUid<10000||oldUid>=100000)throw new IOException("Invalid saved app identity");
    description.append(engine.pm.getApplicationLabel(engine.pm.getApplicationInfo(pkg,0))).append(" ("+pkg+")\n");
+   if(differentSignature)description.append("Different signature confirmed. Restoring data into the installed app.\n");
    if(oldUid!=newUid)description.append("Ownership will be adapted to this installation.\n");
    JSONArray payloads=app.getJSONArray("payloads");boolean ce=false;
    for(int j=0;j<payloads.length();j++){
@@ -32,6 +44,8 @@ final class RestorePreparation {
     payload.put("sha256",BackupEngine.hash(tar)).put("labelsSha256",BackupEngine.hash(sidecar));
    }
    if(!ce)throw new IOException("Credential-protected app data missing: "+pkg);app.put("uid",newUid);
+   // Pin the staged plan to the approved installation for the final compatibility check.
+   if(differentSignature){app.put("signers",current.getJSONArray("signers"));app.remove("apks");}
   }
   BackupEngine.write(new File(job,"manifest.json"),manifest.toString(2));return description.toString();
  }

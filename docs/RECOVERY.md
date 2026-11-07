@@ -1,4 +1,4 @@
-# Recovery backups — 1.6.9
+# Recovery backups — 1.7.0
 
 Before a user-initiated restore replaces data, Raven creates and validates a temporary transaction snapshot. It also retains a separate, standalone recovery ZIP for each app, containing the app's data immediately before restore. A newly installed app may have blank data; its recovery backup returns it to that state.
 
@@ -6,7 +6,7 @@ Retained files use names such as `Recovery_AppName_10-24-2026_a1b2c3d4.zip`. The
 
 ## Select and delete recovery backups
 
-Open **Settings > Backup storage > Manage recovery backups**. The themed popup lists each recovery backup by app name, date and size. Check individual entries or use **Select all**. **Delete selected** is disabled until you select an entry. Review the second confirmation popup, then press **Delete**. Cancel leaves the files intact. Deletion does not clear installed app data or normal backups.
+Open **Settings > Backup preferences > Manage recovery backups**. The themed popup lists each recovery backup by app name, date and size. Check individual entries or use **Select all**. **Delete selected** is disabled until you select an entry. Review the second confirmation popup, then press **Delete**. Cancel leaves the files intact. Deletion does not clear installed app data or normal backups.
 
 Deletion is blocked while Raven has an interrupted restore that still needs recovery. Use **Settings > Advanced > Recover pending restore** first. Cleanup validates each selected file's location and reviewed metadata before deletion. It does not traverse links or remove files outside Raven's managed recovery folder. The Restore tab's ordinary Delete selected action can also remove managed recovery entries.
 

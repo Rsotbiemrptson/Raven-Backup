@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0 — streamed external data backups (November 6, 2026)
+
+- Add optional backup and restore of primary external app files with ZIP64 support. Stream new external backups directly into ZIPs and continue to read older archives.
+- Move signature and version overrides to Restore preferences. A blocked restore identifies the differences and points to the required settings.
+- Use accent-colored toggles for Backup and Restore selections and preferences.
+- Align the About and License dialog widths with the shared Raven layout.
+
+
 ## 1.6.9 — issue reporting and signature overrides (November 6, 2026)
 
 - Allow explicit data-only restore to an installed app with the same package ID and version code but a different signing certificate.

@@ -4,22 +4,22 @@
 
 **Your apps. Your progress.**
 
-Raven Backup is an experimental Android app for backing up user-app private data and, optionally, the original APKs and installed splits. Its root backend was tested on **AYN Odin 2 and Odin 3** using the OEM `PServerBinder` service.
+Raven Backup is an experimental Android app for backing up user-app private data and, optionally, the original APKs, installed splits, and primary external app files. Its root backend was tested on **AYN Odin 2 and Odin 3** using the OEM `PServerBinder` service.
 
 **Final build for the current milestone.** Adds [device and Android migration warnings](docs/MIGRATION.md), plus [tagged recovery backups and selective cleanup](docs/RECOVERY.md). Odin 2-to-Odin 3 app/data restores passed file and metadata verification; app-level compatibility still varies.
 
 ## What it does
 
-- Select multiple installed user apps for backup, with a ZIP per app and a history of versions. Search for apps one at a time without losing checked selections, then use **Show selected** to review them together.
-- Include the original signed base APK and installed splits, or back up private data only.
+- Select multiple installed user apps for backup, with a ZIP per app and a history of versions. Search for apps one at a time without losing selections, then use **Show selected** to review them together.
+- Include the original signed base APK and installed splits, or back up private data only. Optionally stream primary external app files into the ZIP. Raven 1.7.0 reads older backups. New streamed ZIPs require 1.7.0 or newer.
 - Choose one local/internal-storage or portable SD folder for both backups and the Restore list. Storage permission is requested only when missing.
 - Name new archives `AppName_MM-DD-YYYY.zip`, with `_2`, `_3`, etc. for additional same-day versions.
 - On verified devices, review and restore a backup or queue different apps in selection order. Each restore checks content, ownership, permissions and SELinux labels. Incompatible apps are skipped with reasons in the final report; data/recovery failures stop the queue. Earlier successful restores stay restored. Opening apps afterward defaults to off.
-- Create temporary transaction recovery protection and retain separately tagged per-app recovery ZIPs until deleted through **Settings > Backup storage > Manage recovery backups**.
+- Create temporary transaction recovery protection and retain separately tagged per-app recovery ZIPs until deleted through **Settings > Backup preferences > Manage recovery backups**.
 - Delete selected ZIPs after confirmation. **Settings > Advanced > Purge all backups** can empty the chosen backup folder, including non-ZIP files and all subfolders, after confirmation; the selected root folder is kept.
 - Schedule approximate daily/weekly backups with charging/idle options and optional Android battery-optimization exemption.
 - Choose light, dark or system appearance and customize the accent using a color wheel, RGB sliders, hex input or Raven-family presets.
-- Approve a data-only restore to a differently signed copy with the same package ID and version code. Raven keeps the installed APK and creates a recovery copy.
+- Enable explicit signature or version overrides under Restore preferences for data-only restore to an installed app with the same package ID. Raven keeps the installed APK and creates a recovery copy.
 - Open **Settings**, **About** and **Report an issue** from the three-dot menu. Issue reports open on GitHub with the app version filled in. The collapsed **Advanced** card uses two buttons per row with short descriptions and contains **Rerun Guided Setup**, backup verification, root-access testing, interrupted-restore recovery and restore rehearsal. First-launch checks start only when **Run checks** is pressed. Setup tests the device and folder without scanning existing backups. Selected archives are fully validated before restore; failed backups are flagged with reasons and can be selected for confirmed deletion. A full library scan is available on demand in Advanced.
 
 ## Supported scope
@@ -35,7 +35,7 @@ The app uses Java and Android framework APIs without a Gradle dependency graph. 
 - `src/`, `res/`, `AndroidManifest.xml`: app source and resources.
 - `build.ps1`: portable app/fixture build script.
 - `tests/`: host checks, Android test helper and disposable fixture source.
-- `releases/v1.6.9/`: the current signed APK and checksum.
+- `releases/v1.7.0/`: the current signed APK and checksum.
 - `docs/`: installation, removal, usage, build and validation notes.
 
 ## License and contributions

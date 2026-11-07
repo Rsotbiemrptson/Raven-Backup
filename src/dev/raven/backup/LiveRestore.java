@@ -16,7 +16,7 @@ final class LiveRestore {
  boolean simulateInterruption;
  boolean keepRollback=true;
  boolean launchAfter=false;
- static final class Plan {File job;JSONObject manifest;String description,migrationWarning="",migrationKey="",migrationApproval;final Map<String,String> approvedSigners=new HashMap<>();}
+ static final class Plan {File job;Uri source;JSONObject manifest;String description,migrationWarning="",migrationKey="",migrationApproval;final Map<String,String> approvedSigners=new HashMap<>();}
  void reviewEnvironment(Plan plan)throws Exception{plan.migrationWarning=FirmwareCheck.warning(plan.manifest);plan.migrationKey=FirmwareCheck.approvalKey(plan.manifest);}
  void approveMigration(Plan plan){plan.migrationApproval=plan.migrationKey;}
  LiveRestore(Context context){engine=new BackupEngine(context);pointer=new File(context.getFilesDir(),"live-pending.json");}
@@ -29,7 +29,7 @@ final class LiveRestore {
  }
  Plan importArchive(Uri uri)throws Exception {
   if(!testing&&!enabled())throw new IOException("Live restore is not verified on this firmware");
-  Plan plan=new Plan();plan.job=engine.job();try(InputStream in=engine.c.getContentResolver().openInputStream(uri)){if(in==null)throw new IOException("Cannot read backup");plan.manifest=engine.unpack(in,plan.job);}catch(Exception e){engine.clean(plan.job);throw e;}
+  Plan plan=new Plan();plan.source=uri;plan.job=engine.job();try(InputStream in=engine.c.getContentResolver().openInputStream(uri)){if(in==null)throw new IOException("Cannot read backup");plan.manifest=engine.unpack(in,plan.job);}catch(Exception e){engine.clean(plan.job);throw e;}
   return plan;
  }
  Plan prepare(Plan plan,Set<String> packages)throws Exception {
@@ -151,9 +151,17 @@ final class LiveRestore {
    }
   }
   String exported=keepRollback?RecoveryStore.save(engine,verifiedRollback,snapshot):"temporary recovery copy";File control=engine.job();JSONObject record=new JSONObject().put("control",control.getPath()).put("rollback",verifiedRollback.getPath()).put("zip",zip.getPath()).put("exported",exported).put("keepRollback",keepRollback).put("incoming",incoming.getPath()).put("rollbackRegularFiles",rollbackFiles).put("manifest",snapshot);
+  JSONObject external=ExternalData.transaction(plan);
+  if(external!=null)record.put("externalTransaction",external);
   durable(new File(engine.c.getFilesDir(),"live-last.json"),record.toString(2));
-  durable(pointer,record.toString(2));durable(new File(control,"state"),"prepared");
-  String undo=replace(verifiedRollback,snapshot),apply=replace(incoming,manifest);
+  if(external!=null)durable(new File(control,"state"),"staging-external");
+  durable(pointer,record.toString(2));
+  if(external!=null)try{ExternalData.stage(engine,plan,external);}catch(Exception failure){
+   try{releaseCopies(record);clearPending(control);}catch(Exception cleanup){failure.addSuppressed(cleanup);}
+   throw failure;
+  }
+  durable(new File(control,"state"),"prepared");
+  String undo=replace(verifiedRollback,snapshot)+ExternalData.undo(external,control),apply=replace(incoming,manifest)+ExternalData.apply(external,control);
   StringBuilder shell=new StringBuilder();
   shell.append("rollback_data() {\nset -e\n").append(undo).append("}\n");
   String done=q(new File(control,"done").getPath()),log=q(new File(control,"root.log").getPath()),uid=""+android.os.Process.myUid();
@@ -162,11 +170,11 @@ final class LiveRestore {
   // Failure injection runs after the first app has been fully restored, exercising cross-app rollback.
   if(injectFailure){JSONObject one=new JSONObject(manifest.toString());JSONArray first=new JSONArray();first.put(apps.getJSONObject(0));one.put("apps",first);shell.append(replace(incoming,one)).append("echo 'Injected failure after first app'\nexit 77\n");}else shell.append(apply);
   shell.append(journal(control,"data-verified")).append("trap finish EXIT\necho 'Live data and metadata verified'\n");
-  try{engine.run(control,shell.toString(),false);}catch(Exception e){String s=state(control);if(s.equals("rolled-back")){clearPending(control);releaseCopies(record);return "Restore failed and rollback verified. "+(keepRollback?"Recovery backups are available in Restore.":"Temporary recovery copies removed.")+"\n"+BackupEngine.read(new File(control,"root.log"),1024*1024);}throw e;}
+  try{engine.run(control,shell.toString(),false);}catch(Exception e){String s=state(control);if(s.equals("rolled-back")){releaseCopies(record);clearPending(control);return "Restore failed and rollback verified. "+(keepRollback?"Recovery backups are available in Restore.":"Temporary recovery copies removed.")+"\n"+BackupEngine.read(new File(control,"root.log"),1024*1024);}throw e;}
   if(simulateInterruption)throw new IOException("Simulated app interruption after data verification; durable recovery journal retained");
   String launchResult="Apps remain stopped; open them when ready.";
-  try{if(launchAfter)launchResult=launchRestored(packages);durable(new File(control,"state"),"committed");clearPending(control);releaseCopies(record);}catch(Exception e){if(pointer.exists())recover();throw new IOException("Restore completion failed: "+e.getMessage());}
-  return "Restored "+packages.size()+" apps. File contents, ownership, permissions and security labels verified.\n"+launchResult+"\n"+(keepRollback?"Recovery backups saved. Clear them in Settings after confirming your restored data.":"Temporary recovery copies removed after success.");
+  try{if(launchAfter)launchResult=launchRestored(packages);durable(new File(control,"state"),"committed");releaseCopies(record);clearPending(control);}catch(Exception e){if(pointer.exists())recover();throw new IOException("Restore completion failed: "+e.getMessage());}
+  return "Restored "+packages.size()+" apps. File contents, ownership, permissions and security labels verified.\n"+(external==null?"":"Primary external files restored. Retained recovery ZIPs cover private data only.\n")+launchResult+"\n"+(keepRollback?"Recovery backups saved. Clear them in Settings after confirming your restored data.":"Temporary recovery copies removed after success.");
  }
 
  void verifyLaunch(List<String> packages)throws Exception{verifyLaunch(packages,false);}
@@ -179,6 +187,7 @@ final class LiveRestore {
   }return results.toString().trim();
  }
  void releaseCopies(JSONObject record)throws Exception {
+  ExternalData.cleanup(engine,record.optJSONObject("externalTransaction"));
   String base=engine.c.getFilesDir().getCanonicalPath()+File.separator;
   for(String name:Arrays.asList("rollback","incoming")){if(!record.has(name))continue;File directory=new File(record.getString(name));if(!directory.getCanonicalPath().startsWith(base))throw new IOException("Invalid recovery cleanup path");engine.clean(directory);}
   File zip=new File(record.getString("zip"));if(!zip.getCanonicalPath().startsWith(base))throw new IOException("Invalid recovery cleanup ZIP");engine.clean(zip.getParentFile());
@@ -278,7 +287,7 @@ final class LiveRestore {
   // Private paths originate solely from our durable journal, never from imported archive names.
   String base=engine.c.getFilesDir().getCanonicalPath()+File.separator;
   for(String field:new String[]{"control","rollback","zip"})if(!new File(record.getString(field)).getCanonicalPath().startsWith(base))throw new IOException("Invalid recovery path");
-  String prior=state(control);if(prior.equals("committed")||prior.equals("rolled-back")||prior.equals("recovered")){clearPending(control);return "Previous restore already completed; no recovery writes required.";}
+  String prior=state(control);if(prior.equals("staging-external")){releaseCopies(record);clearPending(control);return "Removed interrupted external staging. App data was unchanged.";}if(prior.equals("committed")||prior.equals("rolled-back")||prior.equals("recovered")){releaseCopies(record);clearPending(control);return "Previous restore already completed; no recovery writes required.";}
   File pid=new File(control,"pid");if(!new File(control,"done").exists()&&pid.exists()){
    String number=BackupEngine.read(pid,100).trim();if(!number.matches("[0-9]+"))throw new IOException("Invalid running-job PID");
    String running=RootBridge.call("sh -c "+q("if kill -0 "+number+" 2>/dev/null; then echo running; fi"));if(running.contains("running"))throw new IOException("Root restore is still running; wait before recovery");
@@ -286,6 +295,6 @@ final class LiveRestore {
   JSONObject manifest=record.getJSONObject("manifest");FirmwareCheck.require(manifest);compatible(manifest);File rollback=new File(record.getString("rollback"));
   // Revalidate the durable rollback ZIP and do not rely on staging left from a prior process.
   File imported=engine.job();try(InputStream in=new FileInputStream(record.getString("zip"))){manifest=engine.unpack(in,imported);}FirmwareCheck.require(manifest);preflight(imported,manifest);
-  File runner=engine.job();engine.run(runner,replace(imported,manifest)+journal(control,"recovered")+"echo 'Recovery data and metadata verified'\n",false);clearPending(control);engine.clean(imported);releaseCopies(record);return "Rollback recovery verified; apps remain stopped. "+(record.optBoolean("keepRollback",true)?"Recovery backups are available in Restore.":"Temporary recovery copies removed.");
+  File runner=engine.job();engine.run(runner,replace(imported,manifest)+ExternalData.undo(record.optJSONObject("externalTransaction"),control)+journal(control,"recovered")+"echo 'Recovery data and metadata verified'\n",false);engine.clean(imported);releaseCopies(record);clearPending(control);return "Rollback recovery verified; apps remain stopped. "+(record.optBoolean("keepRollback",true)?"Recovery backups are available in Restore.":"Temporary recovery copies removed.");
  }
 }

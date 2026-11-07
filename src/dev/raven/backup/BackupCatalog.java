@@ -12,7 +12,7 @@ final class BackupCatalog {
  static List<Entry> read(Context context,List<Entry> result)throws Exception{
   result.sort((a,b)->Long.compare(b.modified,a.modified));
   for(Entry entry:result){try(InputStream stream=context.getContentResolver().openInputStream(entry.uri);ZipInputStream zip=new ZipInputStream(stream)){
-    ZipEntry first=zip.getNextEntry();if(first==null||!first.getName().equals("manifest.json"))throw new IOException("Import to inspect this ZIP");ByteArrayOutputStream out=new ByteArrayOutputStream();BackupEngine.copy(zip,out,1024*1024);entry.manifest=new JSONObject(out.toString("UTF-8"));if((entry.manifest.getInt("format")!=1&&entry.manifest.getInt("format")!=2)||entry.manifest.getJSONArray("apps").length()==0)throw new IOException("Unknown archive format");entry.recovery=entry.privateRecovery||"recovery".equals(entry.manifest.optString("backupType"));
+    ZipEntry first=zip.getNextEntry();if(first==null||!first.getName().equals("manifest.json"))throw new IOException("Import to inspect this ZIP");ByteArrayOutputStream out=new ByteArrayOutputStream();BackupEngine.copy(zip,out,1024*1024);entry.manifest=new JSONObject(out.toString("UTF-8"));if((entry.manifest.getInt("format")<1||entry.manifest.getInt("format")>ExternalData.STREAM_FORMAT)||entry.manifest.getJSONArray("apps").length()==0)throw new IOException("Unknown archive format");entry.recovery=entry.privateRecovery||"recovery".equals(entry.manifest.optString("backupType"));
    }catch(Exception e){entry.problem="Import to inspect";entry.manifest=null;}BackupIssues.load(context,entry);}
   return result;
  }

@@ -49,12 +49,13 @@ final class LiveRestore {
   for(int i=0;i<apps.length();i++){
    JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");
    JSONObject now;try{now=engine.info(pkg);}catch(android.content.pm.PackageManager.NameNotFoundException missing){throw new IOException("App is not installed: "+pkg);}
+   SystemAppData.require(app,now,manifest);
    if(now.getInt("uid")!=app.getInt("uid")||now.getLong("version")!=app.getLong("version")||!now.getJSONArray("signers").toString().equals(app.getJSONArray("signers").toString()))throw new IOException("Package, UID, version or signing identity changed: "+pkg);
    JSONArray payloads=app.getJSONArray("payloads");if(payloads.length()<1||payloads.length()>2)throw new IOException("Invalid CE/DE payloads");
    for(int j=0;j<payloads.length();j++){
     String domain=payloads.getJSONObject(j).getString("domain");
     String context=RootBridge.call("ls -Zd "+q(data(pkg,domain))).trim().split("\\s+")[0];
-    if(!context.matches("u:object_r:app_data_file:s0(:c[0-9]+(,c[0-9]+)*)?"))throw new IOException("Unexpected current app SELinux context: "+context);
+    if(!SystemAppData.context(now,context))throw new IOException("Unexpected current app SELinux context: "+context);
    }
   }
  }
@@ -89,7 +90,7 @@ final class LiveRestore {
  String replace(File job,JSONObject manifest)throws Exception{
   StringBuilder shell=new StringBuilder();JSONArray apps=manifest.getJSONArray("apps");
   for(int i=0;i<apps.length();i++){
-   JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");shell.append("am force-stop --user 0 ").append(q(pkg)).append("\n");JSONArray payloads=app.getJSONArray("payloads");
+   JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");shell.append("am force-stop --user 0 ").append(q(pkg)).append("\n").append(SystemAppData.stopped(app));JSONArray payloads=app.getJSONArray("payloads");
    for(int j=0;j<payloads.length();j++){
     JSONObject payload=payloads.getJSONObject(j);String destination=data(pkg,payload.getString("domain"));
     shell.append("[ -d ").append(q(destination)).append(" ]\n[ ! -L ").append(q(destination)).append(" ]\n[ \"$(stat -c %u ").append(q(destination)).append(")\" = ").append(app.getInt("uid")).append(" ]\n");

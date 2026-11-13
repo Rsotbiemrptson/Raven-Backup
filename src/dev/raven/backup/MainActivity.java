@@ -21,6 +21,7 @@ import java.text.DateFormat;
 /** Independent UI guided by Neo Backup's app rows, navigation and batch workflows. */
 public class MainActivity extends Activity {
  static final int INFO_POPUP_WIDTH_DP=480;
+ static final String[] BACKUP_ORDER_LABELS={"Package ID","App name","Size"};
  int BG,SURFACE,CARD,TEXT,MUTED,ACCENT,INK,ACCENT_TEXT; boolean lightTheme;
  static final class AppRow {ApplicationInfo info;String label,version;long updated;boolean launchable;}
  final Set<String> selected=new TreeSet<>();final Set<String> selectedBackups=new LinkedHashSet<>();Button deleteBackups,selectBackups,showSelected;List<AppRow> allApps=new ArrayList<>();List<BackupCatalog.Entry> catalog=new ArrayList<>();final Map<String,BackupCatalog.Entry> latest=new HashMap<>();
@@ -180,7 +181,7 @@ public class MainActivity extends Activity {
   LinearLayout tools=row();search=new EditText(this);search.setSingleLine(true);search.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);search.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH|android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);search.setTextColor(TEXT);search.setHintTextColor(MUTED);search.setTextSize(14);search.setHint(name.equals("Restore")?"Search backups or apps":"Search app name or package");search.setOnEditorActionListener((view,action,event)->{if(action==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(view.getWindowToken(),0);return true;}return false;});search.setPadding(dp(16),dp(8),dp(16),dp(8));search.setBackground(shape(SURFACE,24));tools.addView(search,new LinearLayout.LayoutParams(0,dp(44),1));
   if(!name.equals("Restore")){Button filters=button("Sort & filter",false,this::showFilters);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(132),dp(44));p.setMargins(dp(10),0,0,0);tools.addView(filters,p);}add(content,tools,-1,44);gap(content,10);
   summary=text("Loading…",12,MUTED);add(content,summary,-1,-2);gap(content,8);ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);list=column();scroll.addView(list);content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-  footer=row();footer.setVisibility(keyboardVisible?View.GONE:View.VISIBLE);footer.setPadding(0,dp(10),0,0);boolean wide=getResources().getConfiguration().orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE;add(content,footer,-1,!wide?110:54);
+  footer=row();footer.setVisibility(keyboardVisible?View.GONE:View.VISIBLE);footer.setPadding(0,dp(10),0,0);boolean wide=getResources().getConfiguration().orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE;add(content,footer,-1,wide?54:110);
   if(name.equals("Restore")){
    selectBackups=button("Select all",false,()->{List<BackupCatalog.Entry> visible=visibleBackups();boolean all=!visible.isEmpty();for(BackupCatalog.Entry e:visible)if(!selectedBackups.contains(e.uri.toString()))all=false;for(BackupCatalog.Entry e:visible)if(all)selectedBackups.remove(e.uri.toString());else selectedBackups.add(e.uri.toString());renderBackups();});
    primary=button("Restore selected",true,this::reviewQueue);deleteBackups=button("Delete selected",false,()->confirmDelete(chosenBackups(),false));
@@ -188,7 +189,30 @@ public class MainActivity extends Activity {
    else{footer.setOrientation(1);LinearLayout files=row();footerAction(files,button("Import ZIP",false,()->pickZip(12)),true);footerAction(files,selectBackups,true);add(footer,files,-1,44);gap(footer,8);LinearLayout batch=row();footerAction(batch,deleteBackups,true);footerAction(batch,primary,true);add(footer,batch,-1,44);}
   }else{
    showSelected=button(selectedOnly?"Show all":"Show selected",false,()->{selectedOnly=!selectedOnly;renderList();});Button clear=button("Clear",false,()->{selected.clear();renderList();});primary=button("Back up apps",true,()->confirmBackup(new ArrayList<>(selected)));
-   if(wide){footerAction(footer,button("Refresh",false,this::refreshData),false);footerAction(footer,showSelected,false);footerAction(footer,clear,false);footerAction(footer,primary,true);}else{footer.setOrientation(1);LinearLayout toolsRow=row();footerAction(toolsRow,button("Refresh",false,this::refreshData),true);footerAction(toolsRow,showSelected,true);footerAction(toolsRow,clear,false);add(footer,toolsRow,-1,44);gap(footer,8);add(footer,primary,-1,44);}
+   Button selectAll=button("Select all",false,()->{
+    for(AppRow app:visibleApps())selected.add(app.info.packageName);
+    renderList();
+   });
+   Button refresh=button("Refresh",false,this::refreshData);
+   if(wide){
+    Button[] actions={refresh,showSelected,selectAll,clear};
+    int width=0;
+    for(Button action:actions){action.setSingleLine(true);action.setPadding(dp(10),action.getPaddingTop(),dp(10),action.getPaddingBottom());width=Math.max(width,
+     (int)Math.ceil(action.getPaint().measureText(action==showSelected?"Show selected":action.getText().toString()))+action.getPaddingLeft()+action.getPaddingRight());}
+    for(Button action:actions){LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(width,dp(44));params.setMargins(0,0,dp(8),0);footer.addView(action,params);}
+    primary.setSingleLine(true);primary.setAutoSizeTextTypeUniformWithConfiguration(10,14,1,android.util.TypedValue.COMPLEX_UNIT_SP);
+    footer.addView(primary,new LinearLayout.LayoutParams(0,dp(44),1));
+   }else{
+    footer.setOrientation(1);
+    LinearLayout toolsRow=row();
+    footerAction(toolsRow,refresh,true);
+    footerAction(toolsRow,showSelected,true);
+    footerAction(toolsRow,selectAll,true);
+    footerAction(toolsRow,clear,true);
+    add(footer,toolsRow,-1,44);
+    gap(footer,8);
+    add(footer,primary,-1,44);
+   }
   }
   search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int start,int count,int after){}public void onTextChanged(CharSequence s,int start,int before,int count){query=s.toString().trim().toLowerCase(Locale.ROOT);renderList();}public void afterTextChanged(Editable e){}});renderList();
  }
@@ -196,21 +220,21 @@ public class MainActivity extends Activity {
  void refreshData(String completion){if(busy)return;int generation=++loadGeneration;Uri selectedTree=tree;loading=true;setStatus("Refreshing app and backup lists…");new Thread(()->{
    List<AppRow> apps=new ArrayList<>();for(ApplicationInfo info:getPackageManager().getInstalledApplications(0)){if(!BackupEngine.eligible(this,info))continue;AppRow app=new AppRow();app.info=info;app.label=getPackageManager().getApplicationLabel(info).toString();app.launchable=getPackageManager().getLaunchIntentForPackage(info.packageName)!=null;try{PackageInfo pi=getPackageManager().getPackageInfo(info.packageName,0);app.version=pi.versionName==null?"Version "+pi.getLongVersionCode():pi.versionName;app.updated=pi.lastUpdateTime;}catch(Exception e){app.version="Installed";}apps.add(app);}
    List<BackupCatalog.Entry> backups=new ArrayList<>();String error=null;try{backups=BackupCatalog.list(this,selectedTree);}catch(Exception e){error="Backup folder is unavailable. Choose it again in Settings.";try{backups=BackupCatalog.recoveries(this);}catch(Exception recoveryError){error+=" Recovery storage could not be read.";}}final List<BackupCatalog.Entry> found=backups;final String problem=error;
-   runOnUiThread(()->{if(generation!=loadGeneration)return;loading=false;allApps=apps;catalog=found;Set<String> existingUris=new HashSet<>();for(BackupCatalog.Entry e:catalog)existingUris.add(e.uri.toString());selectedBackups.retainAll(existingUris);latest.clear();for(BackupCatalog.Entry backup:catalog)if(!backup.recovery&&backup.manifest!=null)try{org.json.JSONArray entries=backup.manifest.getJSONArray("apps");for(int i=0;i<entries.length();i++){String pkg=entries.getJSONObject(i).getString("package");if(!latest.containsKey(pkg))latest.put(pkg,backup);}}catch(Exception ignored){}if(!section.equals("Settings"))renderList();setStatus(problem==null?(completion==null?"Ready. "+apps.size()+" user apps • "+catalog.size()+" backups available.":completion):problem);});
+   runOnUiThread(()->{if(generation!=loadGeneration)return;loading=false;allApps=apps;catalog=found;Set<String> existingUris=new HashSet<>();for(BackupCatalog.Entry e:catalog)existingUris.add(e.uri.toString());selectedBackups.retainAll(existingUris);latest.clear();for(BackupCatalog.Entry backup:catalog)if(!backup.recovery&&backup.manifest!=null)try{org.json.JSONArray entries=backup.manifest.getJSONArray("apps");for(int i=0;i<entries.length();i++){String pkg=entries.getJSONObject(i).getString("package");if(!latest.containsKey(pkg))latest.put(pkg,backup);}}catch(Exception ignored){}if(!section.equals("Settings"))renderList();setStatus(problem==null?(completion==null?"Ready. "+apps.size()+" apps • "+catalog.size()+" backups available.":completion):problem);});
   }).start();}
- List<AppRow> visibleApps(){List<AppRow> visible=new ArrayList<>();for(AppRow app:allApps){if(selectedOnly&&!selected.contains(app.info.packageName))continue;if(!(app.label.toLowerCase(Locale.ROOT).contains(query)||app.info.packageName.toLowerCase(Locale.ROOT).contains(query)))continue;if(filter==1&&!latest.containsKey(app.info.packageName))continue;if(filter==2&&latest.containsKey(app.info.packageName))continue;visible.add(app);}visible.sort((a,b)->{if(sort==1)return a.info.packageName.compareTo(b.info.packageName);if(sort==2)return Long.compare(b.updated,a.updated);return a.label.compareToIgnoreCase(b.label);});return visible;}
+ List<AppRow> visibleApps(){List<AppRow> visible=new ArrayList<>();for(AppRow app:allApps){if(!selectedOnly&&SystemAppData.systemSection(app.info)!=(filter==3))continue;if(selectedOnly&&!selected.contains(app.info.packageName))continue;if(!(app.label.toLowerCase(Locale.ROOT).contains(query)||app.info.packageName.toLowerCase(Locale.ROOT).contains(query)))continue;if(filter==1&&!latest.containsKey(app.info.packageName))continue;if(filter==2&&latest.containsKey(app.info.packageName))continue;visible.add(app);}visible.sort((a,b)->{if(sort==1)return a.info.packageName.compareTo(b.info.packageName);if(sort==2)return Long.compare(b.updated,a.updated);return a.label.compareToIgnoreCase(b.label);});return visible;}
  void updateAppSelection(){int count=selected.size();primary.setText(count==0?"Back up apps":"Back up "+count+(count==1?" app":" apps"));primary.setEnabled(!busy&&count>0);primary.setAlpha(primary.isEnabled()?1f:.55f);}
  void renderList(){if(list==null||section.equals("Settings"))return;list.removeAllViews();if(section.equals("Restore")){renderBackups();return;}
-  if(showSelected!=null){showSelected.setText(selectedOnly?"Show all":"Show selected");showSelected.setBackground(shape(selectedOnly?ACCENT:CARD,24));showSelected.setTextColor(selectedOnly?INK:TEXT);}List<AppRow> visible=visibleApps();summary.setText(visible.size()+" user apps • "+selected.size()+" selected"+(selectedOnly?" • Selected only":"")+(filter==0?"":" • Filter active"));updateAppSelection();
-  if(visible.isEmpty()){empty(loading?"Loading your apps…":selectedOnly&&selected.isEmpty()?"No apps selected":"No matching apps",selectedOnly&&selected.isEmpty()?"Choose Show all to find apps and check their boxes.":"Try another search or filter.");return;}
+  if(showSelected!=null){showSelected.setText(selectedOnly?"Show all":"Show selected");showSelected.setBackground(shape(selectedOnly?ACCENT:CARD,24));showSelected.setTextColor(selectedOnly?INK:TEXT);}List<AppRow> visible=visibleApps();summary.setText(visible.size()+" apps • "+selected.size()+" selected"+(selectedOnly?" • Selected only":"")+(filter==0?"":" • Filter active"));updateAppSelection();
+  if(visible.isEmpty()){empty(loading?"Loading your apps…":selectedOnly&&selected.isEmpty()?"No apps selected":"No matching apps",selectedOnly&&selected.isEmpty()?"Choose Show all to find apps and select them.":"Try another search or filter.");return;}
   boolean landscape=getResources().getConfiguration().orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE;
   for(AppRow app:visible){
    LinearLayout card=listCard();if(landscape)card.setPadding(dp(16),dp(10),dp(16),dp(10));LinearLayout line=row();ImageView icon=new ImageView(this);try{icon.setImageDrawable(getPackageManager().getApplicationIcon(app.info));}catch(Exception ignored){}add(line,icon,40,40);
    LinearLayout labels=column();labels.setPadding(dp(14),0,dp(8),0);TextView name=text(app.label,16,TEXT);name.setTypeface(null,Typeface.BOLD);name.setMaxLines(1);name.setEllipsize(TextUtils.TruncateAt.END);add(labels,name,-1,-2);TextView pkg=text(app.info.packageName,11,MUTED);pkg.setMaxLines(1);pkg.setEllipsize(TextUtils.TruncateAt.END);add(labels,pkg,-1,-2);line.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
    BackupCatalog.Entry latestBackup=latest.get(app.info.packageName);String backupText=latestBackup==null?"No backup in this folder":"Backed up "+date(latestBackup);
-   if(landscape){LinearLayout metadata=column();add(metadata,text("User app • "+app.version,11,MUTED),-1,-2);add(metadata,text(backupText,11,latestBackup==null?MUTED:AppearanceColors.readable(ACCENT,SURFACE)),-1,-2);add(line,metadata,190,-2);}
-   Switch toggle=accentSwitch("",selected.contains(app.info.packageName));toggle.setContentDescription("Select "+app.label);toggle.setOnCheckedChangeListener((v,on)->{if(on)selected.add(app.info.packageName);else selected.remove(app.info.packageName);if(selectedOnly)renderList();else{summary.setText(visibleApps().size()+" user apps • "+selected.size()+" selected");updateAppSelection();}});add(line,toggle,56,48);add(card,line,-1,-2);
-   if(!landscape){gap(card,8);add(card,text("User app • "+app.version+" • "+backupText,11,latestBackup==null?MUTED:AppearanceColors.readable(ACCENT,SURFACE)),-1,-2);}labels.setOnClickListener(v->details(app));icon.setOnClickListener(v->details(app));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,0,0,dp(8));list.addView(card,p);
+   if(landscape){LinearLayout metadata=column();add(metadata,text((SystemAppData.system(app.info)?"System app · data only • ":"User app • ")+app.version,11,MUTED),-1,-2);add(metadata,text(backupText,11,latestBackup==null?MUTED:AppearanceColors.readable(ACCENT,SURFACE)),-1,-2);add(line,metadata,190,-2);}
+   Switch toggle=accentSwitch("",selected.contains(app.info.packageName));toggle.setContentDescription("Select "+app.label);toggle.setOnCheckedChangeListener((v,on)->{if(on)selected.add(app.info.packageName);else selected.remove(app.info.packageName);if(selectedOnly)renderList();else{summary.setText(visibleApps().size()+" apps • "+selected.size()+" selected");updateAppSelection();}});add(line,toggle,56,48);add(card,line,-1,-2);
+   if(!landscape){gap(card,8);add(card,text((SystemAppData.system(app.info)?"System app · data only • ":"User app • ")+app.version+" • "+backupText,11,latestBackup==null?MUTED:AppearanceColors.readable(ACCENT,SURFACE)),-1,-2);}labels.setOnClickListener(v->details(app));icon.setOnClickListener(v->details(app));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,0,0,dp(8));list.addView(card,p);
   }
  }
  List<BackupCatalog.Entry> visibleBackups(){List<BackupCatalog.Entry> rows=new ArrayList<>();for(BackupCatalog.Entry e:catalog)if(query.isEmpty()||(e.name+" "+backupNames(e)+(e.recovery?" recovery":"")).toLowerCase(Locale.ROOT).contains(query))rows.add(e);return rows;}
@@ -219,13 +243,33 @@ public class MainActivity extends Activity {
  void renderBackups(){list.removeAllViews();List<BackupCatalog.Entry> visible=visibleBackups();for(BackupCatalog.Entry entry:visible){LinearLayout card=listCard();LinearLayout heading=row();TextView label=text(backupNames(entry),16,TEXT);label.setTypeface(null,Typeface.BOLD);heading.addView(label,new LinearLayout.LayoutParams(0,-2,1));if(entry.validationProblem!=null){TextView warning=text("Check failed",12,AppearanceColors.readable(ACCENT,SURFACE));warning.setPadding(dp(10),dp(4),dp(10),dp(4));add(heading,warning,-2,-2);}if(entry.recovery){TextView tag=text("Recovery",12,INK);tag.setPadding(dp(10),dp(4),dp(10),dp(4));tag.setBackground(shape(ACCENT,12));add(heading,tag,-2,-2);}Switch toggle=accentSwitch("",selectedBackups.contains(entry.uri.toString()));toggle.setContentDescription("Select backup "+backupNames(entry)+" "+entry.name);toggle.setOnCheckedChangeListener((v,on)->{if(on)selectedBackups.add(entry.uri.toString());else selectedBackups.remove(entry.uri.toString());updateBackupSelection();});add(heading,toggle,56,48);add(card,heading,-1,-2);gap(card,5);add(card,text(date(entry)+"  •  "+size(entry.size)+"  •  "+backupContents(entry),12,AppearanceColors.readable(ACCENT,SURFACE)),-1,-2);add(card,text(entry.name,11,MUTED),-1,-2);if(entry.validationProblem!=null)add(card,text(entry.validationProblem,12,TEXT),-1,-2);gap(card,10);LinearLayout actions=row();Button restore=button(entry.recovery?"Recovery restore":"Review & restore",true,()->reviewLive(entry.uri));add(actions,restore,-2,38);Button details=button("Details",false,()->backupDetails(entry));details.setBackground(shape(CARD,24));LinearLayout.LayoutParams space=new LinearLayout.LayoutParams(-2,dp(38));space.setMargins(dp(10),0,0,0);actions.addView(details,space);add(card,actions,-1,-2);LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,dp(10));list.addView(card,cp);}updateBackupSelection();if(visible.isEmpty())empty(tree==null?"Choose your backup folder":"No matching backups",tree==null?"Choose a backup folder in Settings to show your backup ZIPs here.":"You can also import a ZIP from another location.");}
  void empty(String title,String message){LinearLayout card=listCard();add(card,text(title,19,TEXT),-1,-2);gap(card,8);add(card,text(message,13,MUTED),-1,-2);add(list,card,-1,-2);}
  String date(BackupCatalog.Entry entry){long time=entry.modified;if(entry.manifest!=null)time=entry.manifest.optLong("created",time);return DateFormat.getDateTimeInstance(DateFormat.SHORT,entry.recovery?DateFormat.MEDIUM:DateFormat.SHORT).format(new Date(time));}
- String size(long bytes){return bytes>=1024*1024?String.format(Locale.ROOT,"%.1f MB",bytes/(1024.0*1024)):String.format(Locale.ROOT,"%.1f KB",bytes/1024.0);}
+ String size(long bytes){if(bytes>=1024L*1024*1024)return String.format(Locale.ROOT,"%.1f GiB",bytes/(1024.0*1024*1024));return bytes>=1024*1024?String.format(Locale.ROOT,"%.1f MB",bytes/(1024.0*1024)):String.format(Locale.ROOT,"%.1f KB",bytes/1024.0);}
  String backupNames(BackupCatalog.Entry entry){if(entry.manifest==null)return "Backup ZIP";try{org.json.JSONArray apps=entry.manifest.getJSONArray("apps");List<String> names=new ArrayList<>();for(int i=0;i<Math.min(2,apps.length());i++){JSONObject saved=apps.getJSONObject(i);names.add(AppNames.saved(this,saved,entry.uri));}return String.join(", ",names)+(apps.length()>2?" + "+(apps.length()-2)+" more":"");}catch(Exception e){return entry.name;}}
- void showFilters(){LinearLayout layout=column();layout.setPadding(dp(24),dp(16),dp(24),dp(16));TextView ft=new TextView(this);ft.setText("Show");add(layout,ft,-1,-2);Spinner f=new Spinner(this);f.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"All user apps","With backups","Without backups"}));f.setSelection(filter);add(layout,f,-1,48);TextView st=new TextView(this);st.setText("Sort by");add(layout,st,-1,-2);Spinner s=new Spinner(this);s.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"App name","Package name","Recently updated"}));s.setSelection(sort);add(layout,s,-1,48);dialog().setTitle("Sort & filter").setView(layout).setPositiveButton("Apply",(d,w)->{filter=f.getSelectedItemPosition();sort=s.getSelectedItemPosition();renderList();}).setNeutralButton("Reset",(d,w)->{filter=0;sort=0;renderList();}).setNegativeButton("Cancel",null).show();}
- void details(AppRow app){final AlertDialog[] detailPopup=new AlertDialog[1];BackupCatalog.Entry backup=latest.get(app.info.packageName);String message=app.info.packageName+"\n"+app.version+"\nUser app • private data\n"+(backup==null?"No backup in the chosen folder":"Latest backup: "+date(backup));LinearLayout extra=column();extra.setPadding(dp(24),dp(8),dp(24),dp(8));add(extra,text(message,14,TEXT),-1,-2);gap(extra,12);add(extra,button("Repair Google Play link",false,()->{if(detailPopup[0]!=null)detailPopup[0].dismiss();confirmPlayLink(app);}), -2,42);detailPopup[0]=dialog().setTitle(app.label).setView(extra).setPositiveButton("Back up",(d,w)->confirmBackup(Arrays.asList(app.info.packageName))).setNeutralButton("History",(d,w)->showHistory(app)).setNegativeButton("Close",null).show();}
+ void showFilters(){LinearLayout layout=column();layout.setPadding(dp(24),dp(16),dp(24),dp(16));TextView ft=new TextView(this);ft.setText("Show");add(layout,ft,-1,-2);Spinner f=new Spinner(this);f.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"All user apps","With backups","Without backups","System apps & services"}));f.setSelection(filter);add(layout,f,-1,48);TextView st=new TextView(this);st.setText("Sort by");add(layout,st,-1,-2);Spinner s=new Spinner(this);s.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"App name","Package name","Recently updated"}));s.setSelection(sort);add(layout,s,-1,48);dialog().setTitle("Sort & filter").setView(layout).setPositiveButton("Apply",(d,w)->{filter=f.getSelectedItemPosition();sort=s.getSelectedItemPosition();renderList();}).setNeutralButton("Reset",(d,w)->{filter=0;sort=0;renderList();}).setNegativeButton("Cancel",null).show();}
+ void details(AppRow app){final AlertDialog[] detailPopup=new AlertDialog[1];BackupCatalog.Entry backup=latest.get(app.info.packageName);String message=app.info.packageName+"\n"+app.version+(SystemAppData.system(app.info)?"\nSystem app • data only\n":"\nUser app • private data\n")+(backup==null?"No backup in the chosen folder":"Latest backup: "+date(backup));LinearLayout extra=column();extra.setPadding(dp(24),dp(8),dp(24),dp(8));add(extra,text(message,14,TEXT),-1,-2);gap(extra,12);if(!SystemAppData.system(app.info))add(extra,button("Repair Google Play link",false,()->{if(detailPopup[0]!=null)detailPopup[0].dismiss();confirmPlayLink(app);}), -2,42);detailPopup[0]=dialog().setTitle(app.label).setView(extra).setPositiveButton("Back up",(d,w)->confirmBackup(Arrays.asList(app.info.packageName))).setNeutralButton("History",(d,w)->showHistory(app)).setNegativeButton("Close",null).show();}
  String backupContents(BackupCatalog.Entry entry){if(entry.manifest!=null&&(entry.manifest.has("external")||entry.manifest.optInt("format")==ExternalData.STREAM_FORMAT))return "Includes external data";if(entry.recovery)return "Recovery • app data before restore";if(entry.manifest!=null)try{JSONArray apps=entry.manifest.getJSONArray("apps");for(int i=0;i<apps.length();i++)if(apps.getJSONObject(i).has("apks"))return "App + data";}catch(Exception ignored){}return "Data only";}
  void confirmPlayLink(AppRow app){dialog().setTitle("Restore Google Play link?").setMessage(app.label+"\n\nUse this only if the app originally came from Google Play. It reinstalls the same signed APKs with app data retained to repair Android’s store attribution. It does not grant a license or subscription. The app will close during the repair.").setPositiveButton("Repair link",(d,w)->work("Repairing Play link",()->{return ApkBackup.repairPlayLink(new BackupEngine(this),app.info.packageName);})).setNegativeButton("Cancel",null).show();}
  void backupDetails(BackupCatalog.Entry entry){StringBuilder message=new StringBuilder(entry.name+"\n"+date(entry)+" • "+size(entry.size)+" • "+backupContents(entry)+"\n\n");if(entry.manifest!=null)try{message.append(FirmwareCheck.source(entry.manifest)).append("\n\n");org.json.JSONArray apps=entry.manifest.getJSONArray("apps");for(int i=0;i<apps.length();i++){org.json.JSONObject app=apps.getJSONObject(i);message.append(AppNames.saved(this,app,entry.uri)).append("\n").append(app.getString("package")).append(" • version ").append(app.getLong("version")).append('\n');}}catch(Exception ignored){}message.append("\nContents and compatibility are checked when you review a restore.");dialog().setTitle("Backup details").setMessage(message.toString()).setPositiveButton("Review restore",(d,w)->reviewLive(entry.uri)).setNeutralButton("Rehearse",(d,w)->confirmRehearsal(entry.uri)).setNegativeButton("Close",null).show();}
+ String backupOrderLabel(int order){return BACKUP_ORDER_LABELS[BackupOrder.key(order)]+(BackupOrder.descending(order)?" ↓ Descending":" ↑ Ascending");}
+ void chooseBackupOrder(){
+  int current=BackupOrder.normalize(getPreferences(0).getInt("backupOrder",BackupOrder.PACKAGE));
+  LinearLayout body=column();body.setPadding(dp(24),dp(8),dp(24),dp(16));
+  add(body,text("Sort by",14,TEXT),-1,-2);
+  Spinner key=new Spinner(this);key.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,BACKUP_ORDER_LABELS));key.setSelection(BackupOrder.key(current));add(body,key,-1,48);gap(body,12);
+  final boolean[] descending={BackupOrder.descending(current)};
+  Button[] directions=new Button[2];TextView hint=text("",14,MUTED);
+  Runnable update=()->{
+   for(int i=0;i<directions.length;i++)if(directions[i]!=null){boolean active=(i==1)==descending[0];directions[i].setBackground(shape(active?ACCENT:SURFACE,24));directions[i].setTextColor(active?INK:TEXT);directions[i].setSelected(active);directions[i].setContentDescription((i==0?"Ascending":"Descending")+(active?", selected":""));}
+   hint.setText(key.getSelectedItemPosition()==BackupOrder.SIZE?(descending[0]?"Largest first":"Smallest first"):(descending[0]?"Z–A":"A–Z"));
+  };
+  directions[0]=button("↑ Ascending",!descending[0],()->{descending[0]=false;update.run();});
+  directions[1]=button("↓ Descending",descending[0],()->{descending[0]=true;update.run();});
+  LinearLayout choices=row();footerAction(choices,directions[0],true);footerAction(choices,directions[1],true);add(body,choices,-1,44);gap(body,10);add(body,hint,-1,-2);
+  key.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> parent,View view,int position,long id){update.run();}public void onNothingSelected(AdapterView<?> parent){}});update.run();
+  dialog().setTitle("Backup order").setView(body).setPositiveButton("Save",(d,w)->{
+   getPreferences(0).edit().putInt("backupOrder",BackupOrder.value(key.getSelectedItemPosition(),descending[0])).apply();showSection("Settings");
+  }).setNegativeButton("Cancel",null).show();
+ }
  void showSettings(){ScrollView scroll=new ScrollView(this);LinearLayout settings=column();scroll.addView(settings);add(content,scroll,-1,-1);showThemeSettings(settings);
   showAutomaticBackupSettings(settings);
   LinearLayout backup=card();
@@ -242,9 +286,24 @@ public class MainActivity extends Activity {
    addSettingsHalf(access,new View(this),SETTINGS_BUTTON_HEIGHT);
    add(backup,access,-1,SETTINGS_BUTTON_HEIGHT);gap(backup,8);
   }
+  if(!BackupEngine.canReadSizes(this)){
+   LinearLayout sizes=row();
+   addSettingsHalf(sizes,button("Allow app size access",true,()->startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))),SETTINGS_BUTTON_HEIGHT);
+   addSettingsHalf(sizes,new View(this),SETTINGS_BUTTON_HEIGHT);
+   add(backup,sizes,-1,SETTINGS_BUTTON_HEIGHT);gap(backup,8);
+   add(backup,text("Optional Usage access lets preparation use Android’s app sizes. Otherwise Raven counts files.",13,MUTED),-1,-2);
+   gap(backup,12);
+  }
+  int savedOrder=BackupOrder.normalize(getPreferences(0).getInt("backupOrder",BackupOrder.PACKAGE));
+  LinearLayout orderRow=row();orderRow.setGravity(Gravity.TOP);orderRow.setBaselineAligned(false);
+  settingsButtonColumn(orderRow,button("Backup order",true,this::chooseBackupOrder),
+   "Current: "+backupOrderLabel(savedOrder)+". Applies to manual and scheduled backups.");
+  addSettingsHalf(orderRow,new View(this),SETTINGS_BUTTON_HEIGHT);
+  add(backup,orderRow,-1,-2);gap(backup,8);
+  add(backup,text("Preparation uses Android app sizes when available, otherwise counts files. ZIP sizes may differ.",13,MUTED),-1,-2);gap(backup,12);
   addSettingsPreference(backup,"Include app APKs and installed splits","includeApks",true,
    "Save installers with your data for manual and scheduled backups. Game installers can be large.");
-  addSettingsPreference(backup,"Include external app data",RestorePreferences.EXTERNAL,false,
+  addSettingsPreference(backup,"Include external app data",RestorePreferences.EXTERNAL,true,
    "Include the app’s primary Android/data files in new backups. Large backups need extra space on the backup drive.");
   add(settings,backup,-1,-2);gap(settings,12);
   LinearLayout restore=card();
@@ -350,11 +409,40 @@ public class MainActivity extends Activity {
   final AlertDialog[] holder=new AlertDialog[1];Runnable update=()->{int count=0;for(boolean on:checked)if(on)count++;holder[0].getButton(-3).setEnabled(count>0);holder[0].getButton(-3).setText(count==0?"Delete selected":"Delete "+count+" selected");};
   holder[0]=dialog().setTitle("Backups need attention").setMultiChoiceItems(labels,checked,(d,index,on)->{checked[index]=on;update.run();}).setPositiveButton(proceed==null?"Close":"Continue without these",(d,w)->{if(proceed!=null)proceed.run();else close.run();}).setNeutralButton("Delete selected",(d,w)->{close.run();List<BackupCatalog.Entry> remove=new ArrayList<>();for(int i=0;i<checked.length;i++)if(checked[i])remove.add(entries.get(i));confirmDelete(remove,false);}).setNegativeButton("Cancel",(d,w)->close.run()).setOnCancelListener(d->close.run()).create();holder[0].show();update.run();
  }
- void showQueueReview(RestoreQueue queue){try{LinearLayout layout=column();layout.setPadding(dp(24),dp(8),dp(24),dp(8));add(layout,text(queue.description()+"Backups run in selection order. Apps stop during restore. Incompatible apps are skipped and listed in the final report. A data-restore or recovery failure stops the queue; earlier successful restores remain in place. Recovery backups are kept until cleared in Settings. Missing apps will be installed from these trusted backups before data restore.",14,TEXT),-1,-2);Switch launch=accentSwitch("Open restored apps after the whole queue",getPreferences(0).getBoolean("launchAfter",false));add(layout,launch,-1,-2);Switch migration=accentSwitch("I understand that backups from other devices or firmware may not work",false);if(queue.needsMigrationConsent())add(layout,migration,-1,-2);ScrollView scroll=new ScrollView(this);scroll.addView(layout);AlertDialog review=dialog().setTitle("Restore "+queue.items.size()+" selected apps?").setView(scroll).setPositiveButton("Restore queue",(d,w)->work("Restoring queued backups",()->{if(queue.needsMigrationConsent()&&!migration.isChecked())throw new java.io.IOException("Confirm the migration warning first");queue.approveMigrations();return queue.run(true,launch.isChecked(),(current,total,name)->runOnUiThread(()->{if(operationPopup!=null){operationPopup.setTitle("Restoring "+current+" of "+total);if(operationMessage!=null)operationMessage.setText(name+"\nRestoring data and verifying files and permissions…");setStatus(name);}}));},()->{showMessage("Restore report",queue.lastReport);refreshDataAfterJob(queue.lastReport);})).setNegativeButton("Cancel",(d,w)->queue.close()).setOnCancelListener(d->queue.close()).show();if(queue.needsMigrationConsent()){review.getButton(-1).setEnabled(false);migration.setOnCheckedChangeListener((b,on)->review.getButton(-1).setEnabled(on));}}catch(Exception e){queue.close();showMessage("Cannot prepare queue",e.getMessage());}}
+ void showQueueReview(RestoreQueue queue){try{LinearLayout layout=column();layout.setPadding(dp(24),dp(8),dp(24),dp(8));add(layout,text(queue.description()+"Backups run in selection order. Apps stop during restore. Incompatible apps are skipped and listed in the final report. A data-restore or recovery failure stops the queue; earlier successful restores remain in place. Recovery backups are kept until cleared in Settings. Missing apps will be installed from these trusted backups before data restore.",14,TEXT),-1,-2);Switch launch=accentSwitch("Open restored apps after the whole queue",getPreferences(0).getBoolean("launchAfter",false));add(layout,launch,-1,-2);Switch migration=accentSwitch("I understand that backups from other devices or firmware may not work",false);if(queue.needsMigrationConsent())add(layout,migration,-1,-2);ScrollView scroll=new ScrollView(this);scroll.addView(layout);AlertDialog review=dialog().setTitle("Restore "+queue.items.size()+" selected apps?").setView(scroll).setPositiveButton("Restore queue",(d,w)->work("Restoring queued backups",()->{if(queue.needsMigrationConsent()&&!migration.isChecked())throw new java.io.IOException("Confirm the migration warning first");queue.approveMigrations();return queue.run(true,launch.isChecked(),(current,total,name)->runOnUiThread(()->{OperationService.progress("Restoring "+current+" of "+total,name);if(operationPopup!=null){operationPopup.setTitle("Restoring "+current+" of "+total);if(operationMessage!=null)operationMessage.setText(name+"\nRestoring data and verifying files and permissions…");setStatus(name);}}));},()->{showMessage("Restore report",queue.lastReport);refreshDataAfterJob(queue.lastReport);})).setNegativeButton("Cancel",(d,w)->queue.close()).setOnCancelListener(d->queue.close()).show();if(queue.needsMigrationConsent()){review.getButton(-1).setEnabled(false);migration.setOnCheckedChangeListener((b,on)->review.getButton(-1).setEnabled(on));}}catch(Exception e){queue.close();showMessage("Cannot prepare queue",e.getMessage());}}
  void chooseFolder(){Intent picker=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(67);if(tree!=null)try{picker.putExtra(DocumentsContract.EXTRA_INITIAL_URI,DocumentsContract.buildDocumentUriUsingTree(tree,DocumentsContract.getTreeDocumentId(tree)));}catch(Exception ignored){}startActivityForResult(picker,10);}
  void pickZip(int code){if(code==12&&!new LiveRestore(this).enabled()){confirmRestoreSetup();return;}startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("application/zip").addCategory(Intent.CATEGORY_OPENABLE),code);}
  void confirmBackup(List<String> packages){if(packages.isEmpty())return;if(tree==null){showMessage("Choose a backup folder","Select a folder in Settings before backing up apps.");return;}if(!Environment.isExternalStorageManager()){showMessage("Storage access needed","Use Settings → Allow internal-storage first.");return;}
-  StringBuilder names=new StringBuilder();for(String pkg:packages)try{names.append(getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg,0))).append('\n');}catch(Exception e){names.append(pkg).append('\n');}ScrollView scroll=new ScrollView(this);TextView text=new TextView(this);text.setPadding(dp(24),dp(8),dp(24),dp(8));text.setText(names+"\nEach app gets its own folder and backup ZIP. These apps will stop while their private data is copied. Do not open them until completion. Backups are unencrypted.");LinearLayout options=column();options.addView(text);Switch include=accentSwitch("Include app installers (base APK + all installed splits)",getPreferences(0).getBoolean("includeApks",true));options.addView(include);scroll.addView(options);Uri destination=tree;dialog().setTitle("Back up "+packages.size()+" apps?").setView(scroll).setPositiveButton("Back up",(d,w)->{getPreferences(0).edit().putBoolean("includeApks",include.isChecked()).apply();work("Backing up apps",()->{BackupEngine e=new BackupEngine(this);e.backupApks=include.isChecked();return e.backup(packages,destination);});}).setNegativeButton("Cancel",null).show();}
+  int systemCount=0;StringBuilder names=new StringBuilder();
+  for(String pkg:packages)try{
+   ApplicationInfo info=getPackageManager().getApplicationInfo(pkg,0);
+   boolean system=SystemAppData.system(info);if(system)systemCount++;
+   names.append(getPackageManager().getApplicationLabel(info)).append(system?" (system app · data only)":"").append('\n');
+  }catch(Exception e){names.append(pkg).append('\n');}
+  boolean onlySystem=systemCount==packages.size();ScrollView scroll=new ScrollView(this);TextView text=new TextView(this);text.setPadding(dp(24),dp(8),dp(24),dp(8));boolean external=RestorePreferences.prefs(this).getBoolean(RestorePreferences.EXTERNAL,true);text.setText(names+"\nExternal app data: "+(external?"Included (primary Android/data files).":"Not included. Enable it in Settings → Backup preferences.")+"\n\nEach app gets its own folder and backup ZIP. These apps will stop while their private data is copied. Do not open them until completion. Backups are unencrypted.");LinearLayout options=column();options.addView(text);Switch include=accentSwitch("Include app installers (base APK + all installed splits)",(!onlySystem&&getPreferences(0).getBoolean("includeApks",true)));include.setEnabled(!onlySystem);options.addView(include);TextView systemNote=text("System-app backups always contain data only. Restore requires the matching installed system app and firmware. System apps that cannot stay stopped are refused.",14,MUTED);if(systemCount>0){systemNote.setPadding(dp(24),dp(8),dp(24),dp(8));options.addView(systemNote);}
+  int selectedOrder=BackupOrder.normalize(getPreferences(0).getInt("backupOrder",BackupOrder.PACKAGE));
+  scroll.addView(options);Uri destination=tree;dialog().setTitle("Back up "+packages.size()+(packages.size()==1?" app?":" apps?")).setView(scroll).setPositiveButton("Back up",(d,w)->{if(!onlySystem)getPreferences(0).edit().putBoolean("includeApks",include.isChecked()).apply();
+  runBackup(packages,destination,include.isChecked(),external,selectedOrder);}).setNegativeButton("Cancel",null).show();}
+ void runBackup(List<String> packages,Uri destination,boolean installers,boolean external,int order){
+  work("Preparing backups",()->{BackupEngine e=new BackupEngine(this);e.backupApks=installers;e.backupExternal=external;e.backupOrder=order;
+  return e.backup(packages,destination,(phase,current,total,label,estimated)->runOnUiThread(()->{
+   String heading=phase+" "+current+" of "+total;
+   String detail=label+"\n"+(phase.equals("Preparing")?"Estimated total so far: ":"Estimated contents: ")+size(estimated);
+   OperationService.progress(heading,detail);
+   if(operationPopup!=null){
+    operationPopup.setTitle(heading);
+    if(operationMessage!=null)operationMessage.setText(detail);
+   }
+   setStatus(heading+" · "+label);
+  }));},null,error->{
+   SystemAppData.Running running=null;for(Throwable cause=error;cause!=null;cause=cause.getCause())if(cause instanceof SystemAppData.Running){running=(SystemAppData.Running)cause;break;}
+   if(running==null){showMessage("Operation stopped",error.getMessage());return;}
+   String pkg=running.pkg,label=pkg;try{label=getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg,0)).toString();}catch(Exception ignored){}
+   String message=label+" keeps running and cannot be safely backed up on this device. No backup was created for this app.";
+   if(error instanceof BackupEngine.BatchFailure){List<String> completed=((BackupEngine.BatchFailure)error).completed;if(!completed.isEmpty())message+="\n\nCompleted apps:\n"+String.join("\n",completed);}
+   showMessage("App can’t be backed up",message);
+  });
+ }
  void reviewLive(Uri uri){reviewLive(uri,null);}
  void reviewLive(Uri uri,String onlyPackage){if(!requireRestoreSetup())return;LiveRestore restoreEngine=new LiveRestore(this);final LiveRestore.Plan[] imported=new LiveRestore.Plan[1];final BackupCatalog.Entry[] failed=new BackupCatalog.Entry[1];work("Checking backup",()->{BackupCatalog.Entry entry=null;for(BackupCatalog.Entry e:catalog)if(e.uri.equals(uri)){entry=e;break;}try{imported[0]=restoreEngine.importArchive(uri);if(entry!=null)BackupIssues.clear(this,entry);}catch(java.io.InterruptedIOException interrupted){throw interrupted;}catch(Exception e){if(entry==null)throw e;BackupIssues.mark(this,entry,BackupIssues.reason(e));failed[0]=entry;return "Backup validation failed. No app data was changed.";}return "Archive checked. Choose apps to restore.";},()->{
    if(failed[0]!=null){showBackupProblems(Arrays.asList(failed[0]),null,()->{});return;}LiveRestore.Plan raw=imported[0];if(raw==null)return;
@@ -407,13 +495,51 @@ public class MainActivity extends Activity {
  @Override protected void onResume(){super.onResume();if(content!=null&&section.equals("Settings")&&!busy)showSection("Settings");}
  void setStatus(String message){lastStatus=message;if(status!=null)status.setText(message);}
  void showProgress(String heading){
-  LinearLayout body=row();body.setPadding(dp(24),dp(16),dp(24),dp(24));ProgressBar spinner=new ProgressBar(this);spinner.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(ACCENT));add(body,spinner,32,32);TextView message=text(heading.startsWith("Backing")?"Copying app installers and private data…":heading.startsWith("Restoring")?"Restoring data and verifying files and permissions…":"Checking files and preparing the next step…",14,TEXT);operationMessage=message;LinearLayout.LayoutParams spacing=new LinearLayout.LayoutParams(0,-2,1);spacing.setMargins(dp(18),0,0,0);body.addView(message,spacing);
+  LinearLayout body=row();body.setPadding(dp(24),dp(16),dp(24),dp(24));TextView message=text(heading.startsWith("Backing")?"Preparing selected apps…":heading.startsWith("Restoring")?"Restoring data and verifying files and permissions…":"Checking files and preparing the next step…",14,TEXT);operationMessage=message;LinearLayout.LayoutParams spacing=new LinearLayout.LayoutParams(0,-2,1);body.addView(message,spacing);
   operationPopup=dialog().setTitle(heading).setView(body).setCancelable(false).create();operationPopup.setCanceledOnTouchOutside(false);operationPopup.show();
  }
  void work(Job job){work("Working",job,null);}
  void work(String title,Job job){work(title,job,null);}
  void work(Job job,Runnable completed){work("Preparing restore",job,completed);}
- void work(String heading,Job job,Runnable completed){if(busy)return;busy=true;setStatus(heading+"… keep Raven Backup open.");showProgress(heading);if(primary!=null)primary.setEnabled(false);new Thread(()->{String result;boolean success=true;try{result=job.run();}catch(Exception e){result="Stopped: "+(e.getMessage()==null?e.getClass().getSimpleName():e.getMessage());success=false;}final String output=result;final boolean passed=success;android.util.Log.i("RavenBackup",output);getPreferences(0).edit().putString("lastOperation",output).apply();runOnUiThread(()->{busy=false;if(operationPopup!=null){operationPopup.dismiss();operationPopup=null;}if(isFinishing()||isDestroyed())return;setStatus(output);if(!section.equals("Settings"))renderList();else showSection("Settings");if(!passed)showMessage("Operation stopped",output);else if(completed!=null)completed.run();else{showMessage("Completed",output);refreshDataAfterJob(output);}});}).start();}
+ void work(String heading,Job job,Runnable completed){work(heading,job,completed,null);}
+ void work(String heading,Job job,Runnable completed,java.util.function.Consumer<Exception> failed){
+  if(busy)return;
+  if(OperationService.running()){showMessage("Operation in progress","A backup or restore is already running. Check the progress notification.");return;}
+  if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+   requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},30);
+  busy=true;setStatus(heading+"… the screen can be turned off.");showProgress(heading);
+  if(primary!=null)primary.setEnabled(false);
+  try{
+   OperationService.begin(this,heading,()->{
+    String result;boolean success=true;Exception failure=null;
+    try{result=job.run();}
+    catch(Exception e){failure=e;result="Stopped: "+(e.getMessage()==null?e.getClass().getSimpleName():e.getMessage());success=false;}
+    final String output=result;final boolean passed=success;final Exception problem=failure;
+    OperationService.result(output,passed);
+    android.util.Log.i("RavenBackup",output);
+    getPreferences(0).edit().putString("lastOperation",output).apply();
+    runOnUiThread(()->{
+     busy=false;
+     if(operationPopup!=null){operationPopup.dismiss();operationPopup=null;}
+     if(isFinishing()||isDestroyed())return;
+     setStatus(output);if(!section.equals("Settings"))renderList();else showSection("Settings");
+     if(!passed){if(failed!=null)failed.accept(problem);else showMessage("Operation stopped",output);}
+     else if(completed!=null)completed.run();
+     else{showMessage("Completed",output);refreshDataAfterJob(output);}
+    });
+   },reason->{
+    busy=false;
+    if(operationPopup!=null){operationPopup.dismiss();operationPopup=null;}
+    setStatus("Could not start background operation");
+    if(primary!=null)primary.setEnabled(true);
+    if(!isFinishing()&&!isDestroyed())showMessage("Cannot start operation",reason);
+   });
+  }catch(RuntimeException error){
+   busy=false;if(operationPopup!=null){operationPopup.dismiss();operationPopup=null;}
+   if(primary!=null)primary.setEnabled(true);
+   showMessage("Cannot start operation",error.getMessage());
+  }
+ }
  @Override protected void onDestroy(){if(operationPopup!=null){operationPopup.dismiss();operationPopup=null;}super.onDestroy();}
  void refreshDataAfterJob(String message){refreshData(message);}
  @Override protected void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);if(result!=RESULT_OK||data==null||data.getData()==null)return;Uri uri=data.getData();if(code==10){try{getContentResolver().takePersistableUriPermission(uri,data.getFlags()&3);tree=uri;getPreferences(0).edit().putString("tree",uri.toString()).apply();selectedBackups.clear();showSection(section);refreshData();}catch(Exception e){showMessage("Folder access failed","Please choose the folder again. "+e.getMessage());}}if(code==11)confirmRehearsal(uri);if(code==12)reviewLive(uri);}

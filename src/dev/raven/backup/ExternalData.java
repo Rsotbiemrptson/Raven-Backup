@@ -50,11 +50,13 @@ final class ExternalData {
   actual.verify(metadata.getLong("bytes"),metadata.getString("sha256"));
   return metadata;
  }
- static String source(Uri parent,String pkg)throws Exception {
+ static String source(BackupEngine engine,Uri parent,String pkg)throws Exception {
   String source=appDirectory(pkg)+"/files";
-  String size=RootBridge.call("sh -c "+q("if [ -d "+q(source)+" ]; then du -sk "+q(source)+"; else echo absent; fi")).trim();
-  if(size.equals("absent"))return null;
-  long estimate=Math.multiplyExact(Long.parseLong(size.split("\\s+")[0]),1024);
+  File probe=engine.job();
+  String result=engine.run(probe,ExternalProbe.command(source,
+   new File(probe,"external-entries.txt").getPath(),new File(probe,"external-size.txt").getPath()),false);
+  long estimate=ExternalProbe.bytes(result);
+  if(estimate<0)return null;
   if(estimate>ExternalTar.LIMIT)throw new IOException("External files exceed the 512 GiB limit");
   if(localFolder(parent).getUsableSpace()<estimate+RESERVE)throw new IOException("The backup drive needs room for the finished ZIP");
   return source;
@@ -76,14 +78,13 @@ final class ExternalData {
     Thread worker=new Thread(producer,"Raven external backup");
     worker.setDaemon(true);
     worker.start();
-    zip.setLevel(Deflater.NO_COMPRESSION);
+    // Keep the ZIP compression level fixed across entries on Android.
     zip.putNextEntry(new ZipEntry(ENTRY));
     BufferedOutputStream buffered=new BufferedOutputStream(zip,65536);
     ExternalTar.Result result=ExternalTar.scan(new BufferedInputStream(input,65536),buffered);
     try{producer.get();}catch(ExecutionException e){throw new IOException("Could not read external app data",e.getCause());}
     buffered.flush();
     zip.closeEntry();
-    zip.setLevel(Deflater.DEFAULT_COMPRESSION);
     zip.putNextEntry(new ZipEntry(FOOTER));
     JSONObject footer=new JSONObject().put("bytes",result.bytes).put("sha256",result.sha256);
     zip.write(footer.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));

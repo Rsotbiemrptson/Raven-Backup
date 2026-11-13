@@ -15,8 +15,8 @@ import java.io.*;
 
 /** First-launch setup. Only Android's folder and permission decisions need user input. */
 public final class SetupActivity extends Activity {
- static final int FOLDER=40,STORAGE=41,HELPER=42;
- int bg,card,text,muted,accent,ink;boolean light,busy,requested;String error="",stage="",report="";
+ static final int FOLDER=40,STORAGE=41,HELPER=42,SIZES=43;
+ int bg,card,text,muted,accent,ink;boolean light,busy,requested,sizeAccessSkipped;String error="",stage="",report="";
  SharedPreferences flow;LinearLayout body,actions;Uri tree;
  AlertDialog testingPopup,completionPopup;TextView testingMessage;
  static SharedPreferences mainPrefs(Context c){return c.getSharedPreferences("MainActivity",0);}
@@ -42,11 +42,11 @@ public final class SetupActivity extends Activity {
   getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);getWindow().getDecorView().setSystemUiVisibility(light?View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR:0);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   flow=getSharedPreferences("setup-flow",0);requested=false;flow.edit().putBoolean("requested",false).apply();tree=folder(this);
   if(flow.getBoolean("running",false)){requested=false;flow.edit().putBoolean("requested",false).apply();error="Setup was interrupted. Recover a pending restore first. If a test app remains afterward, remove it below, then retry.";}
-  if(saved!=null&&!saved.getString("error","").isEmpty())error=saved.getString("error");render();
+  if(saved!=null){sizeAccessSkipped=saved.getBoolean("sizeAccessSkipped",false);if(!saved.getString("error","").isEmpty())error=saved.getString("error");}render();
  }
  @Override protected void onResume(){super.onResume();tree=folder(this);if(!busy){render();if(flow.getBoolean("completionPending",false)&&checksReady(this))showCompletion();}}
  @Override public void onConfigurationChanged(android.content.res.Configuration config){super.onConfigurationChanged(config);render();}
- @Override protected void onSaveInstanceState(Bundle saved){super.onSaveInstanceState(saved);saved.putString("error",error);}
+ @Override protected void onSaveInstanceState(Bundle saved){super.onSaveInstanceState(saved);saved.putString("error",error);saved.putBoolean("sizeAccessSkipped",sizeAccessSkipped);}
  @Override public void onBackPressed(){if(busy){Toast.makeText(this,"Setup checks are still running.",Toast.LENGTH_SHORT).show();return;}if(ready(this))super.onBackPressed();else moveTaskToBack(true);}
  boolean helperInstalled(){try{getPackageManager().getPackageInfo(SetupCheck.PACKAGE,0);return true;}catch(PackageManager.NameNotFoundException absent){return false;}}
  void step(String title,String detail,boolean done){LinearLayout section=column();section.setPadding(dp(16),dp(12),dp(16),dp(12));section.setBackground(shape(card,16));TextView heading=label((done?"✓  ":"")+title,17,text);heading.setTypeface(null,Typeface.BOLD);add(section,heading,-2);gap(section,4);add(section,label(detail,13,muted),-2);add(body,section,-2);gap(body,10);}
@@ -56,12 +56,13 @@ public final class SetupActivity extends Activity {
   LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);ImageView icon=new ImageView(this);icon.setImageDrawable(getApplicationInfo().loadIcon(getPackageManager()));icon.setContentDescription("Raven Backup");header.addView(icon,new LinearLayout.LayoutParams(dp(42),dp(42)));
   TextView title=label(checksReady(this)?"Setup complete":"Raven Backup setup",23,text);title.setTypeface(null,Typeface.BOLD);title.setPadding(dp(12),0,0,0);header.addView(title);add(root,header,-2);gap(root,12);
   ScrollView scroll=new ScrollView(this);scroll.setFillViewport(false);body=column();scroll.addView(body);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-  boolean folderReady=hasFolder(this,tree),storage=Environment.isExternalStorageManager(),verified=checksReady(this);
-  add(body,label("Choose your backup folder and allow storage access. When you are ready, press Run checks to test this device.",14,muted),-2);gap(body,12);
+  boolean folderReady=hasFolder(this,tree),storage=Environment.isExternalStorageManager(),verified=checksReady(this),sizes=BackupEngine.canReadSizes(this);
+  add(body,label("Choose a backup folder and allow storage access. App-size access is optional. Checks start only when you press Run checks.",14,muted),-2);gap(body,12);
   if(!error.isEmpty()){TextView problem=label(error,14,text);problem.setPadding(0,dp(8),0,dp(12));add(body,problem,-2);}
   step("1. Backup folder",folderReady?BackupEngine.folderName(tree):"Choose an existing backup folder or create a dedicated one.",folderReady);
   step("2. Storage access",storage?"Internal-storage scripts are allowed.":"Allow access so Raven can create its backup scripts.",storage);
-  step("3. Device checks",busy?stage:verified?"Folder, root access and live restore are ready.":"Press Run checks to test root, folder access and a full restore using a disposable app.",verified);
+  step("3. App sizes (optional)",sizes?"Usage access is allowed. Raven can use Android’s app sizes to help prepare and order backups.":sizeAccessSkipped?"Skipped. Raven will count files instead. You can enable app-size access later in Settings → Backup preferences.":"Allow Usage access to help Raven estimate other apps’ sizes. You can skip this; Raven will count files instead. This is separate from required storage access.",sizes);
+  step("4. Device checks",busy?stage:verified?"Folder, root access and live restore are ready.":"Press Run checks to test root, folder access and a full restore using a disposable app.",verified);
   add(body,label("The checks temporarily install Raven Restore Check, verify backup, rollback, reinstall, data and file permissions, then remove it. Your other apps and backup ZIPs are not changed. Keep the device unlocked until setup finishes.",13,muted),-2);gap(body,8);
   actions=column();gap(root,8);add(root,actions,-2);
   if(busy){ProgressBar progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setIndeterminate(true);progress.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(AppearanceColors.readable(accent,card)));add(actions,progress,6);gap(actions,10);add(actions,label(stage,14,text),-2);return;}
@@ -73,11 +74,20 @@ public final class SetupActivity extends Activity {
   }
   if(!folderReady)button("Choose backup folder",true,this::chooseFolder);
   else if(!storage){button("Allow storage access",true,this::allowStorage);button("Change backup folder",false,this::chooseFolder);}
+  else if(!sizes&&!sizeAccessSkipped){button("Allow app size access (optional)",true,this::allowAppSizes);button("Skip for now",false,()->{sizeAccessSkipped=true;error="";render();});button("Change backup folder",false,this::chooseFolder);}
   else if(verified){button("Open Raven Backup",true,this::openApp);button("Run checks again",false,()->{requestChecks();runChecks();});button("Change backup folder",false,this::chooseFolder);}
   else{button(error.isEmpty()?"Run checks":"Retry checks",true,()->{requestChecks();runChecks();});button("Change backup folder",false,this::chooseFolder);}
  }
  void chooseFolder(){requested=false;flow.edit().putBoolean("requested",false).apply();Intent picker=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION|Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);picker.putExtra(DocumentsContract.EXTRA_INITIAL_URI,tree!=null?DocumentsContract.buildDocumentUriUsingTree(tree,DocumentsContract.getTreeDocumentId(tree)):DocumentsContract.buildDocumentUri("com.android.externalstorage.documents","primary:Documents"));startActivityForResult(picker,FOLDER);}
  void requestChecks(){requested=false;error="";flow.edit().putBoolean("requested",false).putBoolean("needsCheck",true).putBoolean("completionPending",false).apply();}
+ void allowAppSizes(){
+  error="";
+  try{startActivityForResult(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS,Uri.parse("package:"+getPackageName())),SIZES);}
+  catch(ActivityNotFoundException unavailable){
+   try{startActivityForResult(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),SIZES);}
+   catch(ActivityNotFoundException unsupported){error="Android’s Usage access page is unavailable. Skip this optional step to continue using file counts.";render();}
+  }
+ }
  void allowStorage(){requested=false;error="";flow.edit().putBoolean("requested",false).putBoolean("needsCheck",true).apply();try{startActivityForResult(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,Uri.parse("package:"+getPackageName())),STORAGE);}catch(Exception e){error="Open Android Settings and allow all-files access for Raven Backup, then retry.";render();}}
  @Override protected void onActivityResult(int code,int result,Intent data){super.onActivityResult(code,result,data);
   if(code==FOLDER){

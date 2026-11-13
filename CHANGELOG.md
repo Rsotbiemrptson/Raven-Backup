@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.1 — reliable large backups and backup controls (November 13, 2026)
+
+- Fix corrupt streamed ZIP entries caused by changing compression levels within an archive. Re-create affected older backups from the original device; installing this release cannot repair their missing/corrupt data.
+- Include primary external app files by default for new settings, show their scope at confirmation, and safely omit confirmed absent/empty external directories without omitting private data or installers.
+- Show app names and batch position during backup, with one completed app per line. Add Select all and compact landscape controls while retaining selections across searches.
+- Add saved Package ID, App name and Size ordering, ascending/descending, with optional Android Usage access during setup or in settings.
+- Protect manual operations with a foreground notification and CPU wake lock for screen-off work. Keep progress text-only and leave native AYN burn-in protection in charge.
+- Allow eligible system-app data only with strict restore identity checks; refuse running persistent apps with a clear warning. Game Assistant remains unsupported on the tested Odin 3.
+
 ## 1.7.0 — streamed external data backups (November 6, 2026)
 
 - Add optional backup and restore of primary external app files with ZIP64 support. Stream new external backups directly into ZIPs and continue to read older archives.

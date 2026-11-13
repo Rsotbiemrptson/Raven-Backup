@@ -72,3 +72,10 @@ Download the [org.json 20240303 JAR from Maven Central](https://repo.maven.apach
 ```
 
 The ordinary host suite now includes migration policy tests as its sixth group. Neither host suite establishes actual cross-device app compatibility.
+
+### System-process regression checks
+
+`tests/device/SystemAppProcessTest.java` is an Android instrumentation check for a supported Odin with Game Assistant running. Compile it into a separate instrumentation APK targeting `dev.raven.backup`, signed with the same development/release identity as the installed target. It requires the OEM root bridge. It verifies detection of the actual running process, a large synthetic process list, subprocess names, empty/failed enumeration, unrelated prefixes and safe refusal of running system apps. This test does not kill a live app. Remove the instrumentation APK after testing. A separately authorized manual UI test is needed for the actual warning behavior. Do not run either check during another backup or restore.
+
+
+`tests/device/FinalReleaseTest.java` is an owner-invoked instrumentation suite, not part of the production APK. Compile it against the built app classes and Android API 35, package it as same-signed instrumentation targeting `dev.raven.backup`, and run only while no operation or recovery is pending. It repeats disposable setup, absent/empty external checks, a 4.125 GiB streamed ZIP64 backup and restore, exact external SHA-256, CE/DE app reads and running-system-app refusal. It installs only Raven's bundled helper and uses a uniquely named temporary folder under the granted backup root. Allow at least 10 GiB free on primary storage and adequate space on the backup volume; keep the device unlocked for the app-read stages. It removes its helper and temporary folder after safe completion. Remove the instrumentation package afterward. Never use personal app data for this suite.

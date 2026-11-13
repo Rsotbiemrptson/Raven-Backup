@@ -43,7 +43,7 @@ New full backups record the installing package and its signing-certificate hashe
 Device and firmware differences require migration confirmation. See [Migration](MIGRATION.md) and [Recovery backups](RECOVERY.md).
 
 - Only the observed Odin OEM root protocol is implemented; no generic su/Magisk backend.
-- User 0 and eligible non-system/non-shared-UID apps only; migration requires explicit confirmation.
+- User 0 and eligible app identities only; user-app migration requires explicit confirmation. Eligible system apps are data-only and require strict same-identity/device/firmware restore.
 - Live metadata checks were demonstrated with SELinux Permissive. Enforcing/cross-firmware restore is unverified; Raven does not change enforcement.
 - No Android Keystore export, account recovery, runtime-permission restoration, store-entitlement transfer, game downloads outside the supported external app files directory, or general ACL/capability preservation.
 - ZIPs are unencrypted and unauthenticated. Imported data and scripts require trust.
@@ -53,7 +53,7 @@ Device and firmware differences require migration confirmation. See [Migration](
 
 ## Permissions
 
-The manifest requests installed-package visibility, all-files access, reboot reception and battery-optimization exemption. These support app selection, root-script launchers and scheduling. The manifest does not request Internet permission. Android system pickers/keyboards and other apps keep their own appearance.
+The manifest requests installed-package visibility, all-files access, reboot reception, optional Usage access, foreground data-sync operation, CPU wake lock, notification access and battery-optimization exemption. These support app selection, root-script launchers and scheduling. The manifest does not request Internet permission. Android system pickers/keyboards and other apps keep their own appearance.
 
 ## Fingerprint spoofing and migration
 
@@ -71,3 +71,37 @@ The Advanced card in Settings starts collapsed. Tap its header or chevron to exp
 - **Rehearse a restore:** validates and extracts a chosen ZIP in a separate test area without replacing installed app data. It does not prove the app will work after a real restore.
 
 **Disable schedule** stops future scheduled backups. **Allow background backups** requests exemption from Android battery optimization; it does not create a schedule or guarantee exact run times.
+
+## Version 1.7.1 behavior
+
+### Backup contents and selection
+
+External app data is included by default for new settings; an existing explicit choice is preserved. Confirmation states whether primary external files are included. This covers internal shared storage's Android/data/<package>/files, not arbitrary game libraries, ROM folders, or physical SD-card app directories. System-app backups always omit installers, even when installer backup is enabled for a mixed selection.
+
+Backup has Refresh, Show selected, Select all and Clear. Selections survive searching and filtering. In landscape these four equal compact buttons share one row with the backup action, which receives the remaining width. Portrait uses a separate backup row.
+
+Android Developer Verifier, Android System Key Verifier and Android System SafetyCore appear only under **System apps & services**, even when installed as user packages. This grouping does not change Android's system flag or backup/restore policy.
+
+### Supported system data
+
+System-app data is limited to supported identities. Ordinary per-app UIDs without a shared identity are allowed; the special shared system identity is restricted to com.odin.gameassistant. Other shared/core identities remain unsupported. System restores require the same installed system identity, UID, signature, version, model, Android version and underlying firmware. General migration or signature/version preferences do not bypass these checks. A system app that restarts after being stopped is refused. Game Assistant on the tested Odin 3 cannot stay stopped and is refused; its backup/restore is unsupported. Files outside supported private/primary-external directories are not captured.
+
+### Long operations and native burn-in protection
+
+Manual operations use a data-sync foreground service with an ongoing notification and a partial CPU wake lock. Notification access is optional; Android may show its own permission dialog. The service releases its wake lock when work finishes and does not automatically retry an interrupted restore. Android 15 limits data-sync foreground services to six background hours per 24-hour period; reopening the app resets that allowance. Battery optimization exemption may still be needed for unattended use. Device testing covered screen-off operation and a completed long batch; Android or firmware can still interrupt work.
+
+Progress dialogs contain text only. Raven does not implement its own pixel shift or change AYN's burn-in settings. The Odin firmware's native static-frame detector can offset the whole display, including dialogs; whole-display offsets were observed with the progress popup open on Odin 3.
+
+### Preparation and backup order
+
+Set **Settings → Backup preferences → Backup order** to Package ID, App name or Size, then choose **↑ Ascending** or **↓ Descending**. Names and package IDs use A–Z or Z–A; size uses smallest or largest first. Earlier smallest/largest-first settings are preserved. Manual and scheduled runs use the saved choice. Preparation estimates the selected apps before backup; ZIP sizes differ because of compression and exclusions.
+
+Optional **Allow app size access** opens Android's Usage access settings. With permission, external data enabled and an app on internal storage, preparation uses per-package Android storage statistics, subtracts cache and adds selected installer sizes. Private-only backups, shared system identities and unavailable statistics use checked root directory counts. Android's totals may include app media outside Raven's scope, so sizes remain estimates. No Usage access is required to back up.
+
+External app files are omitted only when a checked root job confirms that the files directory is absent or contains no files. The installer and private data still back up. Empty files count as content. Unreadable directories, incomplete checks and invalid sizes fail clearly instead of silently omitting data. Root-job results are read from a checked log rather than treating an empty OEM reply as a size. Existing backup formats and the restore reader are unchanged.
+
+Completed-app reports list one app per line, including partial-batch failures. Backup streaming keeps one compression level throughout each ZIP to avoid the Android ZIP entry corruption seen when changing levels mid-archive.
+
+Guided setup offers optional **App sizes** access after required storage access and before device checks. **Allow app size access (optional)** opens Android’s Usage access page; **Skip for now** continues with file counting. Returning from Android refreshes the status without starting checks. Required folder/storage/live-restore approval is unchanged, and app-size access can be enabled later in Backup preferences.
+
+System apps that keep running show **App can’t be backed up** with a Close button. There is no force-close retry or temporary disable/resume option. Persistent system apps are checked before a normal stop is attempted, so an unsupported running app is left alone. Missing or failed process enumeration also refuses the backup. No completed backup is published for the rejected app.

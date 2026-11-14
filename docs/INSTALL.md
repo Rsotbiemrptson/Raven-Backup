@@ -1,4 +1,4 @@
-# Installing Raven Backup 1.7.1
+# Installing Raven Backup 1.7.2
 
 ## Before installation
 
@@ -10,15 +10,15 @@ For recovery of existing backups on a wiped device, use [Restore after a factory
 
 ## Install on the device
 
-1. Copy `releases/v1.7.1/RavenBackup-1.7.1.apk` to the device and open it in a file manager. Allow installation from that file manager if Android asks.
+1. Copy `releases/v1.7.2/RavenBackup-1.7.2.apk` to the device and open it in a file manager. Allow installation from that file manager if Android asks.
 2. Open Raven Backup. On a fresh installation, the guided setup appears before the main app.
 3. Choose a backup folder and approve Android's folder request. Use a dedicated folder; Purge in the main app empties that folder completely.
 4. Tap **Allow storage access** if needed, enable access on Android's page, then return to Raven.
 5. Optionally tap **Allow app size access (optional)** and enable Usage access for Raven on Android’s page, then return. Or tap **Skip for now**; Raven will count files instead. Skipping does not limit backup/restore or prevent the required device checks.
-6. Press **Run checks**. A themed **Testing…** popup shows progress while Raven checks root, folder operations and full backup/restore using its bundled disposable helper. The helper diagnostic screen stays hidden and it is removed afterward. The themed **Done** popup confirms **Checks passed**; tap **Continue** to enter the app with restore enabled. Failures show an explanation and a retry action. These checks do not change your other apps or original ZIPs.
+6. Press **Run checks**. A themed **Testing…** popup shows progress while Raven checks root, folder operations and full backup/restore using its bundled disposable helper. The helper uses a no-display activity and its diagnostic screen stays hidden and it is removed afterward. The themed **Done** popup confirms **Checks passed**; tap **Continue** to enter the app with restore enabled. Failures show an explanation and a retry action. These checks do not change your other apps or original ZIPs.
 7. Make a small backup and keep an independent copy before relying on the app.
 
-Existing archives are fully checked when selected for restore, rather than during setup. An unreadable or invalid backup cannot block device setup. Use **Settings > Advanced > Verify backup folder** for an optional full scan. Failed backups are flagged with reasons and can be selected for confirmed deletion.
+Restore queues review local/SD ZIP metadata first. Private payloads and installers are fully validated at each app’s turn, while external files are validated during the staging write. No app data is replaced until its required checks pass. Non-seekable inputs and older multi-app ZIPs retain full up-front validation. An unreadable or invalid backup cannot block device setup. Use **Settings > Advanced > Verify backup folder** for an optional full scan. Failed backups are flagged with reasons and can be selected for confirmed deletion.
 
 Raven does not root a device or install a root manager. A working supported OEM root service is required. Android's own folder and storage approvals must still be confirmed by the user. Setup starts on first **open**, not silently in the background at APK installation.
 
@@ -28,7 +28,11 @@ For scheduled backups, use **Choose apps & schedule**, select daily/weekly and a
 
 ## Updates
 
-Install the new signed APK over the existing package. Normal updates with the same signing certificate preserve Raven's settings and folder grants. There is no need to uninstall first. A differently signed local build cannot replace the distributed APK; see [Building](BUILD.md). Resolve any pending restore before changing builds or clearing data. Raven 1.7.1 opens older backups. New streamed external-data ZIPs require 1.7.0 or newer.
+Install the new signed APK over the existing package. Normal updates with the same signing certificate preserve Raven's settings and folder grants. There is no need to uninstall first. A differently signed local build cannot replace the distributed APK; see [Building](BUILD.md). Resolve any pending restore before changing builds or clearing data. Raven 1.7.2 opens older backups. New streamed external-data ZIPs require 1.7.0 or newer; private newline filenames, app-scoped links and FIFOs require 1.7.2 to restore.
+
+## Settings transfer
+
+Use **Settings > Settings & configuration > Export settings** to save a JSON copy outside storage you plan to wipe. After reinstall/reset, complete guided setup and select the backup folder first, then use **Import settings** and review the values. Import preserves this device’s folder and verification; it does not grant Android permissions or import recovery data. Imported schedule choices remain off until enabled through **Choose apps & schedule**.
 
 ## Optional ADB installation
 
@@ -36,7 +40,7 @@ With Android platform-tools installed and USB debugging authorized:
 
 ```powershell
 adb devices
-adb -s YOUR_SERIAL install -r .\releases\v1.7.1\RavenBackup-1.7.1.apk
+adb -s YOUR_SERIAL install -r .\releases\v1.7.2\RavenBackup-1.7.2.apk
 ```
 
 Choose the intended device serial explicitly, especially when two devices are attached. Open Raven afterward and follow the same setup steps.
@@ -46,10 +50,10 @@ Choose the intended device serial explicitly, especially when two devices are at
 From the repository root:
 
 ```powershell
-Get-FileHash .\releases\v1.7.1\RavenBackup-1.7.1.apk -Algorithm SHA256
+Get-FileHash .\releases\v1.7.2\RavenBackup-1.7.2.apk -Algorithm SHA256
 ```
 
-Compare the result with `releases/v1.7.1/SHA256SUMS.txt`. A matching checksum detects file changes; it is not a substitute for trusting the source of the download.
+Compare the result with `releases/v1.7.2/SHA256SUMS.txt`. A matching checksum detects file changes; it is not a substitute for trusting the source of the download.
 
 ## Migration and recovery backups
 

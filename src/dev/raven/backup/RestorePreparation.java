@@ -37,14 +37,14 @@ final class RestorePreparation {
     JSONObject payload=payloads.getJSONObject(j);String domain=payload.getString("domain");if(domain.equals("ce"))ce=true;
     String target=LiveRestore.data(pkg,domain),context=RootBridge.call("ls -Zd "+BackupEngine.q(target)).trim().split("\\s+")[0];
     if(!SystemAppData.context(current,context))throw new IOException("App storage is not ready or uses unsupported labels: "+pkg+". Open the app once, then retry.");
-    List<TarGuard.Record> records=TarGuard.records(new File(job,payload.getString("tar")));
+    List<TarGuard.Record> records=TarGuard.records(new File(job,payload.getString("tar")),pkg);
     for(TarGuard.Record record:records)if(record.uid!=oldUid||record.gid!=oldUid||(record.mode&~0777L)!=0)throw new IOException("Unsupported saved ownership or special permissions in "+pkg);
     File sidecar=new File(job,payload.getString("labels"));String[] pairs=BackupEngine.read(sidecar,32*1024*1024).split("\0",-1);String rootContext=null;
     for(int k=0;k<pairs.length-1;k+=2)if(TarGuard.path(pairs[k]).isEmpty())rootContext=pairs[k+1];
     if(!SystemAppData.context(app,rootContext))throw new IOException("Unsupported saved app security context");
-    StringBuilder adapted=new StringBuilder();for(int k=0;k<pairs.length-1;k+=2){String normalized=TarGuard.path(pairs[k]);if(!pairs[k+1].equals(rootContext))for(TarGuard.Record record:records)if(record.path.equals(normalized)&&record.directory)throw new IOException("Category-free profile must be a regular file");String mapped=SelinuxLabels.adapt(pairs[k],pairs[k+1],rootContext,context);adapted.append(pairs[k]).append('\0').append(mapped).append('\0');}
+    StringBuilder adapted=new StringBuilder();for(int k=0;k<pairs.length-1;k+=2){String normalized=TarGuard.path(pairs[k]);if(!pairs[k+1].equals(rootContext))for(TarGuard.Record record:records)if(record.path.equals(normalized)&&(record.directory||record.symlink||record.fifo))throw new IOException("Category-free profile must be a regular file");String mapped=SelinuxLabels.adapt(pairs[k],pairs[k+1],rootContext,context);adapted.append(pairs[k]).append('\0').append(mapped).append('\0');}
     BackupEngine.write(sidecar,adapted.toString());
-    File tar=new File(job,payload.getString("tar"));if(oldUid!=newUid)remapTar(tar,oldUid,newUid);
+    File tar=new File(job,payload.getString("tar"));if(oldUid!=newUid)TarGuard.remapOwners(tar,oldUid,newUid,pkg);
     payload.put("sha256",BackupEngine.hash(tar)).put("labelsSha256",BackupEngine.hash(sidecar));
    }
    if(!ce&&!SystemAppData.system(app))throw new IOException("Credential-protected app data missing: "+pkg);app.put("uid",newUid);

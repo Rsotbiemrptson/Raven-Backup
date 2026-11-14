@@ -16,7 +16,7 @@ final class LiveRestore {
  boolean simulateInterruption;
  boolean keepRollback=true;
  boolean launchAfter=false;
- static final class Plan {File job;Uri source;JSONObject manifest;String description,migrationWarning="",migrationKey="",migrationApproval;final Map<String,String> approvedSigners=new HashMap<>();}
+ static final class Plan {File job;Uri source;IndexedArchive.Stamp sourceStamp;boolean deferredExternal,metadataOnly;String headerIdentity;JSONObject manifest;String description,migrationWarning="",migrationKey="",migrationApproval;final Map<String,String> approvedSigners=new HashMap<>();}
  void reviewEnvironment(Plan plan)throws Exception{plan.migrationWarning=FirmwareCheck.warning(plan.manifest);plan.migrationKey=FirmwareCheck.approvalKey(plan.manifest);}
  void approveMigration(Plan plan){plan.migrationApproval=plan.migrationKey;}
  LiveRestore(Context context){engine=new BackupEngine(context);pointer=new File(context.getFilesDir(),"live-pending.json");}
@@ -27,12 +27,17 @@ final class LiveRestore {
  Plan prepare(Uri uri)throws Exception {
   return prepare(importArchive(uri),null);
  }
- Plan importArchive(Uri uri)throws Exception {
+ Plan importArchive(Uri uri)throws Exception{return importArchive(uri,false);}
+ Plan importArchive(Uri uri,boolean quickReview)throws Exception {
   if(!testing&&!enabled())throw new IOException("Live restore is not verified on this firmware");
-  Plan plan=new Plan();plan.source=uri;plan.job=engine.job();try(InputStream in=engine.c.getContentResolver().openInputStream(uri)){if(in==null)throw new IOException("Cannot read backup");plan.manifest=engine.unpack(in,plan.job);}catch(Exception e){engine.clean(plan.job);throw e;}
+  Plan plan=new Plan();plan.source=uri;plan.job=engine.job();try{IndexedArchive.Result indexed=IndexedArchive.read(engine,uri,plan.job,quickReview);if(indexed!=null&&indexed.metadataOnly&&indexed.manifest.getJSONArray("apps").length()>1)indexed=IndexedArchive.read(engine,uri,plan.job,false);if(indexed!=null){plan.manifest=indexed.manifest;plan.sourceStamp=indexed.stamp;plan.metadataOnly=indexed.metadataOnly;plan.headerIdentity=indexed.headerIdentity;plan.deferredExternal=ExternalData.metadata(plan.manifest)!=null;}else try(InputStream in=engine.c.getContentResolver().openInputStream(uri)){if(in==null)throw new IOException("Cannot read backup");plan.manifest=engine.unpack(in,plan.job);}}catch(Exception e){engine.clean(plan.job);throw e;}
   return plan;
  }
+ void materialize(Plan plan)throws Exception{
+  if(!plan.metadataOnly)return;IndexedArchive.unchanged(engine,plan);IndexedArchive.Result full=IndexedArchive.read(engine,plan.source,plan.job,false);if(full==null||!plan.headerIdentity.equals(full.headerIdentity))throw new IOException("Backup metadata changed after review");plan.manifest=full.manifest;plan.metadataOnly=false;
+ }
  Plan prepare(Plan plan,Set<String> packages)throws Exception {
+  materialize(plan);
   if(packages!=null){JSONArray filtered=new JSONArray();Set<String> found=new HashSet<>();JSONArray apps=plan.manifest.getJSONArray("apps");for(int i=0;i<apps.length();i++){JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");if(packages.contains(pkg)){filtered.put(app);found.add(pkg);}}if(filtered.length()==0||!found.equals(packages))throw new IOException("Selected apps are absent from this backup");plan.manifest.put("apps",filtered);}
   plan.description=RestorePreparation.prepare(engine,plan.job,plan.manifest,plan.approvedSigners);if(plan.migrationWarning.isEmpty())plan.description=FirmwareCheck.source(plan.manifest)+"\n\n"+plan.description;compatible(plan.manifest);return plan;
  }
@@ -63,8 +68,8 @@ final class LiveRestore {
  String labels(File job,JSONObject payload)throws Exception{return BackupEngine.read(new File(job,payload.getString("labels")),32*1024*1024);}
 
  // Builds exact content/metadata checks from validated tar headers, not live source data.
- String verify(File job,JSONObject payload,String destination,int uid,boolean live)throws Exception{
-  List<TarGuard.Record> records=TarGuard.records(new File(job,payload.getString("tar")));
+ String verify(File job,JSONObject payload,String destination,JSONObject app,boolean live)throws Exception{
+  int uid=app.getInt("uid");List<TarGuard.Record> records=TarGuard.records(new File(job,payload.getString("tar")),app.getString("package"));
   File expected=new File(job,payload.getString("tar")+".paths");ByteArrayOutputStream paths=new ByteArrayOutputStream();StringBuilder shell=new StringBuilder();boolean root=false;
   for(TarGuard.Record r:records){
    if(r.path.isEmpty()){if(!r.directory)throw new IOException("Archive root is not a directory");root=true;}
@@ -72,12 +77,13 @@ final class LiveRestore {
    if(r.uid!=uid||r.gid!=uid||(r.mode&~0777L)!=0)throw new IOException("Unsupported owner/group or special permission bits");
    String relative=r.path.isEmpty()?".":"./"+r.path;paths.write(relative.getBytes("UTF-8"));paths.write(0);
    String path=destination+(r.path.isEmpty()?"":"/"+r.path);
-   shell.append("[ ! -L ").append(q(path)).append(" ]\n[ ").append(r.directory?"-d ":"-f ").append(q(path)).append(" ]\n[ \"$(stat -c %a:%u:%g ").append(q(path)).append(")\" = ").append(q(Long.toOctalString(r.mode)+":"+r.uid+":"+r.gid)).append(" ]\n");
-   if(!r.directory)shell.append("h=$(sha256sum ").append(q(path)).append("); [ \"${h%% *}\" = ").append(q(r.sha256)).append(" ]\n");
+   shell.append(r.symlink?"[ -L ":"[ ! -L ").append(q(path)).append(" ]\n[ ").append(r.directory?"-d ":r.symlink?"-L ":r.fifo?"-p ":"-f ").append(q(path)).append(" ]\n[ \"$(stat -c %a:%u:%g ").append(q(path)).append(")\" = ").append(q(Long.toOctalString(r.mode)+":"+r.uid+":"+r.gid)).append(" ]\n");
+   if(r.symlink)shell.append("[ \"$(readlink -- ").append(q(path)).append(")\" = ").append(q(r.linkTarget)).append(" ]\n");
+   if(!r.directory&&!r.symlink&&!r.fifo)shell.append("h=$(sha256sum < ").append(q(path)).append("); [ \"${h%% *}\" = ").append(q(r.sha256)).append(" ]\n");
   }
   if(!root)throw new IOException("Archive root metadata missing");try(FileOutputStream out=new FileOutputStream(expected)){out.write(paths.toByteArray());out.getFD().sync();}
   String[] pairs=labels(job,payload).split("\0",-1);String current=RootBridge.call("ls -Zd "+q(destination)).trim().split("\\s+")[0];
-  for(int i=0;i<pairs.length-1;i+=2){String relative=TarGuard.path(pairs[i]);if(!pairs[i+1].equals(current))for(TarGuard.Record record:records)if(record.path.equals(relative)&&record.directory&&SelinuxLabels.profile(relative,pairs[i+1]))throw new IOException("Category-free profile must be a regular file");if(live&&!pairs[i+1].equals(SelinuxLabels.adapt(relative,pairs[i+1],current,current)))throw new IOException("Saved SELinux labels differ from installed app category");String path=destination+(relative.isEmpty()?"":"/"+relative);shell.append("l=$(ls -Zd ").append(q(path)).append("); [ \"${l%% *}\" = ").append(q(pairs[i+1])).append(" ]\n");}
+  for(int i=0;i<pairs.length-1;i+=2){String relative=TarGuard.path(pairs[i]);if(!pairs[i+1].equals(current))for(TarGuard.Record record:records)if(record.path.equals(relative)&&(record.directory||record.symlink||record.fifo)&&SelinuxLabels.profile(relative,pairs[i+1]))throw new IOException("Category-free profile must be a regular file");if(live&&!pairs[i+1].equals(SelinuxLabels.adapt(relative,pairs[i+1],current,current)))throw new IOException("Saved SELinux labels differ from installed app category");String path=destination+(relative.isEmpty()?"":"/"+relative);shell.append("l=$(ls -Zd ").append(q(path)).append("); [ \"${l%% *}\" = ").append(q(pairs[i+1])).append(" ]\n");}
   File actual=new File(job,payload.getString("tar")+".actual");
   shell.append("(cd ").append(q(destination)).append("; find . \\( -path ./lib -o -path ./cache -o -path ./code_cache \\) -prune -o -print0) | LC_ALL=C sort -z > ").append(q(actual.getPath())).append("\nLC_ALL=C sort -z ").append(q(expected.getPath())).append(" | cmp - ").append(q(actual.getPath())).append("\n");
   return shell.toString();
@@ -96,7 +102,7 @@ final class LiveRestore {
     shell.append("[ -d ").append(q(destination)).append(" ]\n[ ! -L ").append(q(destination)).append(" ]\n[ \"$(stat -c %u ").append(q(destination)).append(")\" = ").append(app.getInt("uid")).append(" ]\n");
     // Only children of a fixed installed-app directory are removed; keep its inode and fscrypt policy.
     shell.append("inode=$(stat -c %i ").append(q(destination)).append(")\nfind ").append(q(destination)).append(" -mindepth 1 -maxdepth 1 ! -name lib ! -name cache ! -name code_cache -exec rm -rf -- {} +\n");
-    shell.append(extract(job,payload,destination)).append("[ \"$(stat -c %i ").append(q(destination)).append(")\" = \"$inode\" ]\n").append(verify(job,payload,destination,app.getInt("uid"),true));
+    shell.append(extract(job,payload,destination)).append("[ \"$(stat -c %i ").append(q(destination)).append(")\" = \"$inode\" ]\n").append(verify(job,payload,destination,app,true));
     shell.append("echo ").append(q(pkg+" "+payload.getString("domain")+": contents, uid/gid, modes, labels, directory inode and exact path set verified")).append("\n");
    }
   }return shell.toString();
@@ -109,10 +115,10 @@ final class LiveRestore {
    for(int j=0;j<payloads.length();j++){
     JSONObject payload=payloads.getJSONObject(j);String dst=root+"/app"+i+"-"+payload.getString("domain");
     // Validate live headers/contexts before root extraction. No existing data is changed here.
-    verify(job,payload,data(app.getString("package"),payload.getString("domain")),app.getInt("uid"),true);
+    verify(job,payload,data(app.getString("package"),payload.getString("domain")),app,true);
     shell.append("mkdir -m 700 ").append(q(dst)).append("\n").append(extract(job,payload,dst));
     // Label comparison for staging uses saved labels; the directory has not been created yet.
-    shell.append(verify(job,payload,dst,app.getInt("uid"),false));
+    shell.append(verify(job,payload,dst,app,false));
    }
   }
   File runner=engine.job();engine.run(runner,shell+"echo 'Staging verification passed'\nrm -rf -- "+q(root)+"\n",false);
@@ -132,12 +138,14 @@ final class LiveRestore {
  String restoreInternal(Plan plan,boolean injectFailure)throws Exception{
   if(!testing&&!enabled())throw new IOException("Live restore is not verified on this firmware");
   JSONObject previous=pending();if(previous!=null)throw new IOException("An earlier restore needs recovery. Use Recover rollback first.");
+  materialize(plan);
   File incoming=plan.job;JSONObject manifest=plan.manifest;
   FirmwareCheck.require(manifest,plan.migrationApproval);
+  IndexedArchive.unchanged(engine,plan);
   preflight(incoming,manifest);
   List<String> packages=new ArrayList<>();JSONArray apps=manifest.getJSONArray("apps");for(int i=0;i<apps.length();i++)packages.add(apps.getJSONObject(i).getString("package"));
   File rollback=engine.job();JSONObject snapshot=engine.archive(packages,rollback,false);
-  int rollbackFiles=0;for(int i=0;i<snapshot.getJSONArray("apps").length();i++){JSONArray payloads=snapshot.getJSONArray("apps").getJSONObject(i).getJSONArray("payloads");for(int j=0;j<payloads.length();j++)for(TarGuard.Record entry:TarGuard.records(new File(rollback,payloads.getJSONObject(j).getString("tar"))))if(!entry.directory)rollbackFiles++;}
+  int rollbackFiles=0;for(int i=0;i<snapshot.getJSONArray("apps").length();i++){JSONArray payloads=snapshot.getJSONArray("apps").getJSONObject(i).getJSONArray("payloads");for(int j=0;j<payloads.length();j++)for(TarGuard.Record entry:TarGuard.records(new File(rollback,payloads.getJSONObject(j).getString("tar")),snapshot.getJSONArray("apps").getJSONObject(i).getString("package")))if(!entry.directory&&!entry.symlink&&!entry.fifo)rollbackFiles++;}
   // Re-import the rollback ZIP to check manifest, CRC and hashes before any live deletion.
   File zip=new File(rollback,"rollback.zip");engine.zip(rollback,snapshot,new FileOutputStream(zip));try(RandomAccessFile file=new RandomAccessFile(zip,"rw")){file.getFD().sync();}
   File verifiedRollback=engine.job();try(InputStream in=new FileInputStream(zip)){snapshot=engine.unpack(in,verifiedRollback);}preflight(verifiedRollback,snapshot);
@@ -157,8 +165,8 @@ final class LiveRestore {
   durable(new File(engine.c.getFilesDir(),"live-last.json"),record.toString(2));
   if(external!=null)durable(new File(control,"state"),"staging-external");
   durable(pointer,record.toString(2));
-  if(external!=null)try{ExternalData.stage(engine,plan,external);}catch(Exception failure){
-   try{releaseCopies(record);clearPending(control);}catch(Exception cleanup){failure.addSuppressed(cleanup);}
+  if(external!=null)try{ExternalData.stage(engine,plan,external);ExternalData.validateLinkTargets(engine,plan,external);}catch(Exception failure){
+   try{releaseCopies(record);durable(new File(control,"state"),"recovered");clearPending(control);}catch(Exception cleanup){failure.addSuppressed(cleanup);}
    throw failure;
   }
   durable(new File(control,"state"),"prepared");
@@ -212,9 +220,9 @@ final class LiveRestore {
   for(String kind:Arrays.asList("owner","special-mode")){
    File tar=new File(job,"hostile-"+kind+".tar");try(InputStream in=new FileInputStream(new File(job,payload.getString("tar")));OutputStream out=new FileOutputStream(tar)){BackupEngine.copy(in,out,BackupEngine.MAX);}
    try(RandomAccessFile file=new RandomAccessFile(tar,"rw")){byte[] header=new byte[512];file.readFully(header);int start=kind.equals("owner")?108:100;byte[] value=(kind.equals("owner")?"0000000":"0007777").getBytes("US-ASCII");System.arraycopy(value,0,header,start,value.length);Arrays.fill(header,148,156,(byte)32);int checksum=0;for(byte b:header)checksum+=b&255;byte[] sum=String.format(Locale.ROOT,"%06o",checksum).getBytes("US-ASCII");System.arraycopy(sum,0,header,148,sum.length);header[154]=0;header[155]=32;file.seek(0);file.write(header);}
-   JSONObject bad=new JSONObject(payload.toString()).put("tar",tar.getName());boolean rejected=false;try{verify(job,bad,destination,app.getInt("uid"),true);}catch(IOException expected){rejected=true;}if(!rejected)throw new IOException("Accepted invalid "+kind);evidence.append("PASS rejected ").append(kind).append(" before live writes.\n");
+   JSONObject bad=new JSONObject(payload.toString()).put("tar",tar.getName());boolean rejected=false;try{verify(job,bad,destination,app,true);}catch(IOException expected){rejected=true;}if(!rejected)throw new IOException("Accepted invalid "+kind);evidence.append("PASS rejected ").append(kind).append(" before live writes.\n");
   }
-  File labels=new File(job,"hostile.labels");String pairs=labels(job,payload);String original=pairs.split("\0",-1)[1];BackupEngine.write(labels,pairs.replace(original,"u:object_r:system_file:s0"));JSONObject bad=new JSONObject(payload.toString()).put("labels",labels.getName());boolean rejected=false;try{verify(job,bad,destination,app.getInt("uid"),true);}catch(IOException expected){rejected=true;}if(!rejected)throw new IOException("Accepted invalid SELinux category");evidence.append("PASS rejected incompatible SELinux labels before live writes.\n");
+  File labels=new File(job,"hostile.labels");String pairs=labels(job,payload);String original=pairs.split("\0",-1)[1];BackupEngine.write(labels,pairs.replace(original,"u:object_r:system_file:s0"));JSONObject bad=new JSONObject(payload.toString()).put("labels",labels.getName());boolean rejected=false;try{verify(job,bad,destination,app,true);}catch(IOException expected){rejected=true;}if(!rejected)throw new IOException("Accepted invalid SELinux category");evidence.append("PASS rejected incompatible SELinux labels before live writes.\n");
   BackupEngine.write(new File(Environment.getExternalStorageDirectory(),"raven-live-safety-tests.txt"),evidence.toString());return evidence.toString();
  }
  String generalBackupTest()throws Exception {
@@ -231,7 +239,7 @@ final class LiveRestore {
   evidence.append("PASS two distinct ZIP versions retained for one app.\nPASS restored original and changed versions independently; app read both expected states.\n");
   seed("seed");File multiJob=engine.job();JSONObject multiManifest=engine.archive(FIXTURES,multiJob,false);File multiZip=new File(multiJob,"legacy-batch.zip");engine.zip(multiJob,multiManifest,new FileOutputStream(multiZip));Uri multi=Uri.fromFile(multiZip);seed("mutate");File before=engine.job();JSONObject unchanged=engine.archive(Arrays.asList(FIXTURES.get(0)),before,false);
   Plan partial=importArchive(multi);prepare(partial,new TreeSet<>(Arrays.asList(FIXTURES.get(1))));restore(partial,false,false);verifyLaunch(Arrays.asList(FIXTURES.get(1)),false);
-  JSONObject first=unchanged.getJSONArray("apps").getJSONObject(0);JSONArray payloads=first.getJSONArray("payloads");StringBuilder check=new StringBuilder();for(int i=0;i<payloads.length();i++){JSONObject p=payloads.getJSONObject(i);check.append(verify(before,p,data(first.getString("package"),p.getString("domain")),first.getInt("uid"),true));}engine.run(engine.job(),check.toString()+"echo 'Unselected app unchanged'\n",false);verifyLaunch(Arrays.asList(FIXTURES.get(0)),true);
+  JSONObject first=unchanged.getJSONArray("apps").getJSONObject(0);JSONArray payloads=first.getJSONArray("payloads");StringBuilder check=new StringBuilder();for(int i=0;i<payloads.length();i++){JSONObject p=payloads.getJSONObject(i);check.append(verify(before,p,data(first.getString("package"),p.getString("domain")),first,true));}engine.run(engine.job(),check.toString()+"echo 'Unselected app unchanged'\n",false);verifyLaunch(Arrays.asList(FIXTURES.get(0)),true);
   restore(prepare(multi),false,true);evidence.append("PASS selected only the second app from a two-app ZIP.\nPASS unselected first app retained its changed contents, owners, modes, labels and exact path set.\nPASS final batch restore and both app reads.\n");
   long batchStarted=System.currentTimeMillis();engine.backup(FIXTURES,tree);int separate=0;for(BackupCatalog.Entry e:BackupCatalog.list(engine.c,tree))if(e.manifest!=null&&e.manifest.getLong("created")>=batchStarted){JSONArray savedApps=e.manifest.getJSONArray("apps");if(savedApps.length()!=1)throw new IOException("New batch backup contains multiple apps");if(FIXTURES.contains(savedApps.getJSONObject(0).getString("package")))separate++;}if(separate!=2)throw new IOException("Expected two separate per-app backups");evidence.append("PASS batch selection produced two separate app-folder ZIPs discoverable by the recursive catalog.\n");
   List<BackupCatalog.Entry> catalog=BackupCatalog.list(engine.c,tree);boolean foundOriginal=false,foundChanged=false;for(BackupCatalog.Entry entry:catalog){if(entry.uri.equals(original))foundOriginal=true;if(entry.uri.equals(changed))foundChanged=true;}if(!foundOriginal||!foundChanged)throw new IOException("History catalog lost a version");evidence.append("PASS both versions remain discoverable in the backup catalog after restores.\n");
@@ -288,7 +296,7 @@ final class LiveRestore {
   // Private paths originate solely from our durable journal, never from imported archive names.
   String base=engine.c.getFilesDir().getCanonicalPath()+File.separator;
   for(String field:new String[]{"control","rollback","zip"})if(!new File(record.getString(field)).getCanonicalPath().startsWith(base))throw new IOException("Invalid recovery path");
-  String prior=state(control);if(prior.equals("staging-external")){releaseCopies(record);clearPending(control);return "Removed interrupted external staging. App data was unchanged.";}if(prior.equals("committed")||prior.equals("rolled-back")||prior.equals("recovered")){releaseCopies(record);clearPending(control);return "Previous restore already completed; no recovery writes required.";}
+  String prior=state(control);if(prior.equals("staging-external")){releaseCopies(record);durable(new File(control,"state"),"recovered");clearPending(control);return "Removed interrupted external staging. App data was unchanged.";}if(prior.equals("committed")||prior.equals("rolled-back")||prior.equals("recovered")){releaseCopies(record);clearPending(control);return "Previous restore already completed; no recovery writes required.";}
   File pid=new File(control,"pid");if(!new File(control,"done").exists()&&pid.exists()){
    String number=BackupEngine.read(pid,100).trim();if(!number.matches("[0-9]+"))throw new IOException("Invalid running-job PID");
    String running=RootBridge.call("sh -c "+q("if kill -0 "+number+" 2>/dev/null; then echo running; fi"));if(running.contains("running"))throw new IOException("Root restore is still running; wait before recovery");

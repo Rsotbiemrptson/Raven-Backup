@@ -112,6 +112,7 @@ final class ExternalData {
  }
  static void stage(BackupEngine engine,LiveRestore.Plan plan,JSONObject transaction)throws Exception {
   JSONObject external=metadata(plan.manifest);
+  IndexedArchive.unchanged(engine,plan);
   if(plan.source==null)throw new IOException("External backup must be opened from its original ZIP");
   File base=engine.c.getExternalFilesDir(null);
   File expected=new File(Environment.getExternalStorageDirectory(),"Android/data/"+engine.c.getPackageName()+"/files");
@@ -121,18 +122,23 @@ final class ExternalData {
   File stage=new File(base,".raven-stage-"+id);
   if(!stage.mkdir())throw new IOException("Cannot create external staging folder");
   try{
+   if(plan.sourceStamp!=null){IndexedArchive.stage(engine,plan,external,stage);return;}
    try(InputStream raw=engine.c.getContentResolver().openInputStream(plan.source)){
     if(raw==null)throw new IOException("Cannot reopen external backup");
     try(ZipInputStream zip=new ZipInputStream(new BufferedInputStream(raw,65536))){
      ZipEntry entry;
      while((entry=zip.getNextEntry())!=null){
       if(!entry.getName().equals(ENTRY))continue;
-      read(zip,external,stage);zip.closeEntry();return;
+      read(zip,external,stage);zip.closeEntry();IndexedArchive.unchanged(engine,plan);return;
      }
     }
    }
    throw new IOException("External backup payload missing");
   }catch(Exception e){try{cleanup(engine,transaction);}catch(Exception cleanup){e.addSuppressed(cleanup);}throw e;}
+ }
+ static void validateLinkTargets(BackupEngine engine,LiveRestore.Plan plan,JSONObject transaction)throws Exception{
+  if(transaction==null)return;String pkg=plan.manifest.getJSONArray("apps").getJSONObject(0).getString("package");File stage=new File(engine.c.getExternalFilesDir(null),".raven-stage-"+id(transaction));org.json.JSONArray payloads=plan.manifest.getJSONArray("apps").getJSONObject(0).getJSONArray("payloads");
+  for(int i=0;i<payloads.length();i++)for(TarGuard.Record record:TarGuard.parse(new File(plan.job,payloads.getJSONObject(i).getString("tar")),false,pkg))if(record.symlink){java.nio.file.Path target=stage.toPath().resolve(TarGuard.externalRelative(record.linkTarget,pkg)).normalize();if(!target.startsWith(stage.toPath())||!java.nio.file.Files.isRegularFile(target,java.nio.file.LinkOption.NOFOLLOW_LINKS))throw new IOException("Symbolic link target is missing from the staged external backup: "+record.path);}
  }
  private static String appDirectory(String pkg)throws IOException {
   if(!pkg.matches("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")||pkg.equals("dev.raven.backup"))throw new IOException("Invalid external destination package");

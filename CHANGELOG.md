@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.7.2 — restore performance, compatibility and settings transfer (November 14, 2026)
+
+- Support newline filenames, app-scoped external symbolic links and metadata-only private FIFOs; retain strict path, ownership and device-node checks.
+- Use a no-display setup helper to remove test-window transitions.
+- Review local/SD restore queues using checked metadata, then validate private/APK payloads per app and validate/write external data in one pass before replacement.
+- Preserve staging/rollback safety and fix clearing recovery state after failed pre-replacement staging.
+- Export and review/import theme, preferences, backup ordering and schedule choices as a JSON file.
+- Keep imported schedules off until reviewed and enabled; preserve the current folder and device approval.
+- Reject invalid/oversized settings and never import Android grants, root approvals or recovery state.
+
 ## 1.7.1 — reliable large backups and backup controls (November 13, 2026)
 
 - Fix corrupt streamed ZIP entries caused by changing compression levels within an archive. Re-create affected older backups from the original device; installing this release cannot repair their missing/corrupt data.

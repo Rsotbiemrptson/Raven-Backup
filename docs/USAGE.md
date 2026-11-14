@@ -20,7 +20,7 @@ After a fresh install or reset, complete the guided setup before entering the ma
 
 **Import ZIP** opens one Raven ZIP from another location for review and restore. It does not copy it into the selected folder. The file picker alone does not start restoring; review and confirmation still apply.
 
-A queue fully validates only the selected archives before confirmation. Failed archives are flagged with reasons in a review popup; continue without them, cancel, or select files for a separate deletion confirmation. Failed checks remain visible until the file changes or a new full validation passes. The queue installs missing apps from full backups and restores archives one at a time. Installed package IDs must match. Restore preferences can allow different signatures, different versions, or both. These switches default to off. Raven restores data into the installed copy and keeps its APK when the required settings are enabled. Known installer incompatibilities, missing installers and blocked identity mismatches are skipped before data replacement; the final report names each restored, skipped, failed or not-run app and gives reasons. Unknown errors, data-replacement failures and pending recovery stop the remaining queue; previously completed restores stay restored. Temporary recovery protects each individual data replacement; it is not an atomic rollback of the whole queue and does not undo APK installation. Open-after defaults to off. If explicitly enabled, it opens only successfully restored apps after a queue finishes without a safety stop. Generic launch success does not prove every account, save or app feature works.
+For seekable local/SD archives, a queue checks metadata before confirmation, then fully validates private data/installers at each app’s turn. External files are checked while writing temporary staging, before replacement. Non-seekable inputs and older multi-app ZIPs keep full up-front validation. Metadata failures appear in a review popup; private payload/installer failures found later are skipped with a reason. External staging/data failures stop the queue. Failed archives are flagged and require a separate confirmation for deletion. Failed checks remain visible until the file changes or a new full validation passes. The queue installs missing apps from full backups and restores archives one at a time. Installed package IDs must match. Restore preferences can allow different signatures, different versions, or both. These switches default to off. Raven restores data into the installed copy and keeps its APK when the required settings are enabled. Known installer incompatibilities, missing installers and blocked identity mismatches are skipped before data replacement; the final report names each restored, skipped, failed or not-run app and gives reasons. Unknown errors, data-replacement failures and pending recovery stop the remaining queue; previously completed restores stay restored. Temporary recovery protects each individual data replacement; it is not an atomic rollback of the whole queue and does not undo APK installation. Open-after defaults to off. If explicitly enabled, it opens only successfully restored apps after a queue finishes without a safety stop. Generic launch success does not prove every account, save or app feature works.
 
 Raven keeps a separate data-only recovery ZIP for each app, capturing its state immediately before restore, which may be blank. These are marked Recovery in Restore and remain until removed in Settings > Backup preferences > Manage recovery backups. The popup supports individual selection, Select all and confirmation. They are stored privately and are lost if Raven is uninstalled or its data is cleared. Never clear/uninstall Raven with pending recovery.
 
@@ -72,7 +72,7 @@ The Advanced card in Settings starts collapsed. Tap its header or chevron to exp
 
 **Disable schedule** stops future scheduled backups. **Allow background backups** requests exemption from Android battery optimization; it does not create a schedule or guarantee exact run times.
 
-## Version 1.7.1 behavior
+## Backup behavior
 
 ### Backup contents and selection
 
@@ -105,3 +105,32 @@ Completed-app reports list one app per line, including partial-batch failures. B
 Guided setup offers optional **App sizes** access after required storage access and before device checks. **Allow app size access (optional)** opens Android’s Usage access page; **Skip for now** continues with file counting. Returning from Android refreshes the status without starting checks. Required folder/storage/live-restore approval is unchanged, and app-size access can be enabled later in Backup preferences.
 
 System apps that keep running show **App can’t be backed up** with a Close button. There is no force-close retry or temporary disable/resume option. Persistent system apps are checked before a normal stop is attempted, so an unsupported running app is left alone. Missing or failed process enumeration also refuses the backup. No completed backup is published for the rejected app.
+
+
+## Settings export and import
+
+Settings > Settings & configuration has Export settings and Import settings. Export saves a small JSON file through Android's file picker: light/dark/system theme, accent, installer/external-data preferences, backup ordering, restore switches and scheduled app/interval/charging/idle choices. Keep the file on storage that survives a reset. It contains app package names, so share it only intentionally. It is separate from app backup ZIPs and contains no app data.
+
+Import validates the file and shows the exact settings before confirmation. Cancelling changes nothing. Imported schedules are kept OFF; open Choose apps & schedule to review available installed apps, frequency and conditions, then enable using this device's current backup folder. A file without a schedule disables and clears the previous schedule. Signature/version override switches are shown explicitly in the review; import only settings you trust.
+
+The current backup-folder grant and device verification remain unchanged. Folder permissions, root/live-restore approval, Android permissions, recovery state, backup ZIPs and history are never imported. On a fresh device or after reset, first complete guided setup and choose the backup folder. Enable optional Usage access/background allowance separately. Export/import is blocked while a manual or scheduled operation runs; applying import is also refused with pending restore recovery. Files over 64 KiB, unsupported schemas, unknown preference fields and invalid values are rejected before applying settings.
+
+Settings transfer passed parser and isolated device preference-application tests. Imported schedules remain disabled and the actual device folder/approval are preserved. Do not install any update during an ongoing backup or restore.
+
+
+## Faster restore review
+
+For seekable local/SD ZIPs, queue review reads and checks the ZIP index, manifest and small external checksum footer. It does not scan all payload contents up front. Each app’s private payloads and installers are fully CRC/hash/path/identity checked at its turn before installation or data replacement; invalid private archives/installers are skipped with a reason. Large external files are validated and written into temporary staging together in one read pass, including ZIP CRC, TAR safety and SHA-256. Only a successful stage can replace the original files. Staging becomes the final app files through a rename, avoiding a second full copy. Retained recovery ZIPs still cover private data only. External staging/data failures stop the queue; earlier successful restores remain restored.
+
+Backup changes after review are refused using file identity plus pinned metadata; payload checks remain mandatory. Non-seekable inputs and old multi-app ZIPs retain the full-validation review path. Advanced Verify backup folder and rehearsal still perform full scans. Cancelling a review does not restore data. An interrupted/failed pre-replacement external stage now clears its recovery flag after safe cleanup, while a cleanup failure preserves the recovery journal.
+
+
+## Special private-data files
+
+Legitimate newline/carriage-return filenames are preserved using NUL-delimited path inventories and filename-independent SHA checks. Absolute paths, NUL bytes, traversal components and backslashes remain rejected. GNU long filename and link-target metadata is bounded and UTF-8 checked.
+
+Private TAR validation accepts symbolic links only with an explicit app identity, targeting `/storage/emulated/0/Android/data/<same-package>/files/<safe-relative-path>`. Links cannot be parents of archived files; hard links, cross-app targets and targets outside that folder remain blocked. A restore including external data verifies that each link target is a regular file in the successfully validated external stage before replacing private data. Private-only recovery can preserve these links while keeping existing external files. Link ownership, modes, labels and the exact target are checked without following it during private extraction/verification.
+
+Private named pipes (FIFOs) are recreated as empty IPC endpoints with checked owner/mode/label metadata. Raven never reads or hashes a FIFO as file contents. Payload-bearing FIFOs, device nodes and unsupported special files remain refused. Connections and in-flight pipe data cannot be backed up. External TARs continue to accept only ordinary files/directories.
+
+The bundled setup helper uses a no-display activity and finishes without creating a visible window. This removes its window transitions; it does not establish the cause of any separate display artifact.

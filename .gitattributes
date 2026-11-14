@@ -6,5 +6,5 @@
 *.png binary
 *.apk binary
 
-# Keep packaged license bytes identical to the tested APK on every platform.
-res/raw/gpl.txt text eol=crlf
+# Preserve the LF license resource bytes used by the tested APK.
+res/raw/gpl.txt text eol=lf

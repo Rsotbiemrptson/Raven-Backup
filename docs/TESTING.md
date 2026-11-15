@@ -1,5 +1,17 @@
 # Validation and development testing
 
+## Version 1.7.3 launcher cleanup — November 14, 2026
+
+Exact APK SHA-256: `0eab98d85c97e5c8a640cab11b2b8f5cf643a6f592495f8812d910d7f4e2bf79` (code 36), installed and tested on Odin 3 / Android 15, using existing internal-storage access and an isolated disposable-app backup folder. All eleven dependency-free host suites passed; app and bundled helper signatures were verified.
+
+- Opening Raven removed all seven existing shared-root launchers, including the reported file. No backup ZIPs or recovery copies were deletion targets.
+- An observer saw a new launcher appear during a real disposable-app backup. After its job completed with exit status zero, the launcher was absent. The resulting ZIP was reopened and validated.
+- An injected exit-23 root job reported failure and still removed its completed launcher.
+- On-device filesystem checks preserved unfinished and modified scripts, rejected a symlink wrapper without following its target, and successfully read completion markers with NOFOLLOW. Host checks also covered malformed markers and missing private jobs.
+- The disposable app, test driver and isolated backup folder were removed; zero shared-root Raven launchers remained. No personal apps were restored or changed.
+
+`tests/device/LauncherCleanupTest.java` contains the focused owner-invoked instrumentation check. It requires a compatible OEM root bridge, an idle Raven with no pending restore, the chosen backup folder and internal-storage access. It installs only the bundled disposable helper and creates/removes its own uniquely named test folder. Historical restore checks below were not all repeated for this cleanup-only change.
+
 ## What has been demonstrated
 
 On the tested Odin 2 environment: root/library access, per-app version history, APK/split backup and reinstall, fresh-install UID adaptation, CE/DE data/preferences, file content/ownership/mode/SELinux verification, recovery after injected failure/interruption, selective legacy restore, sequential queues, duplicate-version rejection, deletion/purge cancellation and confirmation, changed-folder refusal, light/dark/system appearance and configuration-change dialog retention.

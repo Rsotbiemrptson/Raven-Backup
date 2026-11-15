@@ -1,4 +1,4 @@
-# Installing Raven Backup 1.7.2
+# Installing Raven Backup 1.7.3
 
 ## Before installation
 
@@ -10,7 +10,7 @@ For recovery of existing backups on a wiped device, use [Restore after a factory
 
 ## Install on the device
 
-1. Copy `releases/v1.7.2/RavenBackup-1.7.2.apk` to the device and open it in a file manager. Allow installation from that file manager if Android asks.
+1. Copy `releases/v1.7.3/RavenBackup-1.7.3.apk` to the device and open it in a file manager. Allow installation from that file manager if Android asks.
 2. Open Raven Backup. On a fresh installation, the guided setup appears before the main app.
 3. Choose a backup folder and approve Android's folder request. Use a dedicated folder; Purge in the main app empties that folder completely.
 4. Tap **Allow storage access** if needed, enable access on Android's page, then return to Raven.
@@ -28,7 +28,7 @@ For scheduled backups, use **Choose apps & schedule**, select daily/weekly and a
 
 ## Updates
 
-Install the new signed APK over the existing package. Normal updates with the same signing certificate preserve Raven's settings and folder grants. There is no need to uninstall first. A differently signed local build cannot replace the distributed APK; see [Building](BUILD.md). Resolve any pending restore before changing builds or clearing data. Raven 1.7.2 opens older backups. New streamed external-data ZIPs require 1.7.0 or newer; private newline filenames, app-scoped links and FIFOs require 1.7.2 to restore.
+Install the new signed APK over the existing package. Normal updates with the same signing certificate preserve Raven's settings and folder grants. There is no need to uninstall first. A differently signed local build cannot replace the distributed APK; see [Building](BUILD.md). Resolve any pending restore before changing builds or clearing data. Raven 1.7.3 opens older backups. New streamed external-data ZIPs require 1.7.0 or newer; private newline filenames, app-scoped links and FIFOs require 1.7.2 or newer to restore.
 
 ## Settings transfer
 
@@ -40,7 +40,7 @@ With Android platform-tools installed and USB debugging authorized:
 
 ```powershell
 adb devices
-adb -s YOUR_SERIAL install -r .\releases\v1.7.2\RavenBackup-1.7.2.apk
+adb -s YOUR_SERIAL install -r .\releases\v1.7.3\RavenBackup-1.7.3.apk
 ```
 
 Choose the intended device serial explicitly, especially when two devices are attached. Open Raven afterward and follow the same setup steps.
@@ -50,11 +50,15 @@ Choose the intended device serial explicitly, especially when two devices are at
 From the repository root:
 
 ```powershell
-Get-FileHash .\releases\v1.7.2\RavenBackup-1.7.2.apk -Algorithm SHA256
+Get-FileHash .\releases\v1.7.3\RavenBackup-1.7.3.apk -Algorithm SHA256
 ```
 
-Compare the result with `releases/v1.7.2/SHA256SUMS.txt`. A matching checksum detects file changes; it is not a substitute for trusting the source of the download.
+Compare the result with `releases/v1.7.3/SHA256SUMS.txt`. A matching checksum detects file changes; it is not a substitute for trusting the source of the download.
 
 ## Migration and recovery backups
 
 Different device model, Android version or firmware shows the backup source details and asks **Cancel / Continue** before proceeding. Package ID, version code and file security checks still apply. A differently signed copy requires explicit approval for data-only restore. After restore, verify the data inside each app. Recovery copies appear in Restore with a **Recovery** tag; manage them through **Settings > Backup preferences > Manage recovery backups**. The popup supports individual selection, Select all and deletion confirmation. Recovery copies are in Raven's private app storage and are lost on uninstall, clear-data or factory reset; normal backups remain separate. See [Migration](MIGRATION.md) and [Recovery backups](RECOVERY.md).
+
+## Temporary launcher scripts
+
+With internal-storage access allowed, Raven removes its unchanged completed-job `raven-backup-job-<UUID>.sh` launchers after use and checks for old completed launchers when opened. The script contains a job command, not backup data. Unfinished, modified or orphaned scripts are retained. Backup ZIPs and recovery copies are not removed by this cleanup.

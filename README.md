@@ -11,9 +11,10 @@ Raven Backup is an experimental Android app for backing up user-app private data
 ## What it does
 
 - Select multiple installed user apps for backup, with a ZIP per app and a history of versions. Search for apps one at a time without losing selections, then use **Show selected** to review them together.
-- Include the original signed base APK and installed splits, or back up private data only. Stream primary external app files into the ZIP, enabled by default for new settings; existing choices are preserved. Raven 1.7.2 reads older backups. New streamed ZIPs require 1.7.0 or newer.
+- Include the original signed base APK and installed splits, or back up private data only. Stream primary external app files into the ZIP, enabled by default for new settings; existing choices are preserved. Raven 1.7.3 reads older backups. New streamed ZIPs require 1.7.0 or newer.
 - Choose one local/internal-storage or portable SD folder for both backups and the Restore list. Storage permission is requested only when missing.
 - Handle legitimate newline filenames and recreate private app FIFOs. Allow app-scoped symbolic links to the same app’s primary external files; verify linked files exist in a staged external restore. Other links and device nodes remain blocked.
+- Automatically remove completed-job launcher scripts from internal storage, including verified leftovers from earlier runs. Unfinished or unrecognized scripts are retained; backup ZIPs and recovery copies are unaffected.
 - Name new archives `AppName_MM-DD-YYYY.zip`, with `_2`, `_3`, etc. for additional same-day versions.
 - Review local/SD restore queues using checked metadata first. Fully validate private data and installers at each app’s turn, and validate/write large external files together before replacing app data. Non-seekable inputs and older multi-app ZIPs keep full up-front validation.
 - Export and review/import theme, backup/restore preferences, backup order and schedule choices through **Settings > Settings & configuration**. Imported schedules stay off until reviewed and enabled; folder permissions and device approval are kept on the current device and must be set up again after a wipe.
@@ -41,7 +42,7 @@ The app uses Java and Android framework APIs without a Gradle dependency graph. 
 - `src/`, `res/`, `AndroidManifest.xml`: app source and resources.
 - `build.ps1`: portable app/fixture build script.
 - `tests/`: host checks, Android test helper and disposable fixture source.
-- `releases/v1.7.2/`: the current signed APK and checksum.
+- `releases/v1.7.3/`: the current signed APK and checksum.
 - `docs/`: installation, removal, usage, build and validation notes.
 
 ## License and contributions

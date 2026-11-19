@@ -13,8 +13,8 @@ final class ExternalTar {
  static final long LIMIT=512L*1024*1024*1024;
  static final class Result {
   final long bytes;
-  final String sha256;
-  Result(long bytes,String sha256){this.bytes=bytes;this.sha256=sha256;}
+  final String sha256;final int entries;
+  Result(long bytes,String sha256,int entries){this.bytes=bytes;this.sha256=sha256;this.entries=entries;}
   void verify(long expectedBytes,String expectedHash)throws IOException {
    if(bytes!=expectedBytes||!sha256.equals(expectedHash))throw new InvalidData("External data size or checksum mismatch");
   }
@@ -26,10 +26,19 @@ final class ExternalTar {
  static Result scan(InputStream input,OutputStream copy)throws Exception {
   return scan(input,LIMIT,null,copy);
  }
- private static Result scan(InputStream input,long limit,Path stage,OutputStream copy)throws Exception {
+ static Result appendScope(InputStream input,String scope,OutputStream output)throws Exception {
+  if(!scope.matches("scope-[0-9]+"))throw new InvalidData("Invalid external scope");
+  return scan(input,LIMIT,null,output,scope,null);
+ }
+ static void readScopes(InputStream input,long bytes,String sha256,Map<String,Path> routes)throws Exception {
+  if(bytes<1024||bytes>LIMIT||bytes%512!=0)throw new InvalidData("Invalid scoped external size");
+  scan(input,bytes,null,null,null,routes).verify(bytes,sha256);
+ }
+ private static Result scan(InputStream input,long limit,Path stage,OutputStream copy)throws Exception {return scan(input,limit,stage,copy,null,null);}
+ private static Result scan(InputStream input,long limit,Path stage,OutputStream copy,String prefix,Map<String,Path> routes)throws Exception {
   MessageDigest digest=MessageDigest.getInstance("SHA-256");
   InputStream checked=new DigestInputStream(input,digest);
-  if(copy!=null)checked=new FilterInputStream(checked){
+  if(copy!=null&&prefix==null)checked=new FilterInputStream(checked){
    @Override public int read()throws IOException{int value=in.read();if(value!=-1)copy.write(value);return value;}
    @Override public int read(byte[] b,int offset,int length)throws IOException{int n=in.read(b,offset,length);if(n>0)copy.write(b,offset,n);return n;}
   };
@@ -50,8 +59,8 @@ final class ExternalTar {
    if(zeros!=0)throw new InvalidData("Invalid external tar trailer");
    long sum=0;for(int i=0;i<512;i++)sum+=(i>=148&&i<156)?32:header[i]&255;
    if(sum!=TarGuard.oct(header,148,8)||!TarGuard.text(header,257,6).trim().equals("ustar"))throw new InvalidData("Invalid external tar header");
-   String prefix=TarGuard.text(header,345,155),name=TarGuard.text(header,0,100);
-   String path=safePath(prefix.isEmpty()?name:prefix+"/"+name);
+   String headerPrefix=TarGuard.text(header,345,155),name=TarGuard.text(header,0,100);
+   String path=safePath(headerPrefix.isEmpty()?name:headerPrefix+"/"+name);
    int type=header[156];long size=number(header);
    if(size>remaining||size>LIMIT)throw new InvalidData("Truncated external tar entry");
    if(type=='L'){
@@ -64,8 +73,14 @@ final class ExternalTar {
     if((directory&&size!=0)||(!directory&&path.isEmpty())||paths.put(path,directory)!=null||paths.size()>250000)throw new InvalidData("Invalid or excessive external paths");
     Path target=stage==null?null:stage.resolve(path).normalize();
     if(target!=null&&!target.startsWith(stage))throw new InvalidData("External archive path escapes staging");
+    if(routes!=null&&!path.isEmpty()){
+     String[] parts=path.split("/",2);Path base=routes.get(parts[0]);if(base==null)throw new InvalidData("Unknown external scope in archive");
+     if(parts.length==1&&!directory)throw new InvalidData("External scope root must be a directory");
+     target=parts.length==1?base:base.resolve(parts[1]).normalize();if(!target.startsWith(base))throw new InvalidData("External scope escape");
+    }
+    if(prefix!=null)ScopedTar.header(copy,prefix+(path.isEmpty()?"":"/"+path),directory,size);
     if(directory){if(target!=null)Files.createDirectories(target);}
-    else if(target==null)transfer(in,null,size,buffer);
+    else if(target==null)transfer(in,prefix==null?null:copy,size,buffer);
     else{
      Files.createDirectories(target.getParent());
      try(OutputStream out=Files.newOutputStream(target,StandardOpenOption.CREATE_NEW,StandardOpenOption.WRITE)){transfer(in,out,size,buffer);}
@@ -73,13 +88,14 @@ final class ExternalTar {
    }
    long padding=(512-size%512)%512;
    if(padding>remaining-size)throw new InvalidData("Truncated external tar padding");
-   transfer(in,null,padding,buffer);remaining-=size+padding;
+   transfer(in,null,padding,buffer);if(prefix!=null&&type!='L')ScopedTar.pad(copy,size);remaining-=size+padding;
   }
   if(zeros<2||!Boolean.TRUE.equals(paths.get(""))||in.read()!=-1)throw new InvalidData("Incomplete external archive");
   for(String path:paths.keySet())for(int slash=path.lastIndexOf('/');slash>=0;slash=path.lastIndexOf('/')){
    path=path.substring(0,slash);if(Boolean.FALSE.equals(paths.get(path)))throw new InvalidData("External file used as directory");
   }
-  return new Result(limit-remaining,BackupEngine.hex(digest.digest()));
+  if(routes!=null)for(String scope:routes.keySet())if(!Boolean.TRUE.equals(paths.get(scope)))throw new InvalidData("External scope missing from TAR");
+  return new Result(limit-remaining,BackupEngine.hex(digest.digest()),paths.size());
  }
  private static long number(byte[] header)throws IOException {
   if((header[124]&128)==0)return TarGuard.oct(header,124,12);

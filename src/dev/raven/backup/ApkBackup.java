@@ -5,7 +5,7 @@ final class ApkBackup {
  static void capture(BackupEngine e,File job,JSONObject manifest)throws Exception {
   JSONArray apps=manifest.getJSONArray("apps");
   for(int i=0;i<apps.length();i++){
-   JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");if(SystemAppData.system(app)||SystemAppData.system(e.pm.getApplicationInfo(pkg,0)))continue;PackageInfo pi=e.pm.getPackageInfo(pkg,0);captureInstaller(e,app);List<String> sources=new ArrayList<>();sources.add(pi.applicationInfo.sourceDir);if(pi.applicationInfo.splitSourceDirs!=null)Collections.addAll(sources,pi.applicationInfo.splitSourceDirs);
+   JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");if(SystemAppData.system(app)||SystemAppData.system(e.pm.getApplicationInfo(pkg,0)))continue;PackageInfo pi=e.pm.getPackageInfo(pkg,0);List<String> sources=new ArrayList<>();sources.add(pi.applicationInfo.sourceDir);if(pi.applicationInfo.splitSourceDirs!=null)Collections.addAll(sources,pi.applicationInfo.splitSourceDirs);
    if(sources.size()>128)throw new IOException("Too many installed APK splits");JSONArray apks=new JSONArray();
    for(int j=0;j<sources.size();j++){String name="app"+i+"-apk"+j+".apk";File file=new File(job,name);try(InputStream in=new FileInputStream(sources.get(j));OutputStream out=new FileOutputStream(file)){BackupEngine.copy(in,out,BackupEngine.MAX);}apks.put(new JSONObject().put("file",name).put("bytes",file.length()).put("sha256",BackupEngine.hash(file)).put("split",j==0?"base":pi.splitNames[j-1]));}
    JSONObject now=e.info(pkg);if(now.getLong("version")!=app.getLong("version")||!now.getJSONArray("signers").toString().equals(app.getJSONArray("signers").toString()))throw new IOException("App changed during backup; retry: "+pkg);app.put("apks",apks);validate(e,job,app,i,new HashSet<>());
@@ -14,22 +14,52 @@ final class ApkBackup {
  static String repairPlayLink(BackupEngine e,String pkg)throws Exception {
   synchronized(LiveRestore.class){
    if(new File(e.c.getFilesDir(),"live-pending.json").exists())throw new IOException("Recover the pending restore first");
-   JSONObject before=e.info(pkg);if(SystemAppData.system(before))throw new IOException("System apps support data backup and restore only");e.pm.getPackageInfo("com.android.vending",0);ApplicationInfo info=e.pm.getApplicationInfo(pkg,0);List<String> paths=new ArrayList<>();paths.add(info.sourceDir);if(info.splitSourceDirs!=null)Collections.addAll(paths,info.splitSourceDirs);long total=0;for(String path:paths)total+=new File(path).length();
-   StringBuilder shell=new StringBuilder("result=$(pm install-create -r -i com.android.vending --user 0 -S "+total+")\necho \"$result\"\nsession=$(printf '%s' \"$result\" | sed -n 's/.*\\[\\([0-9]*\\)\\].*/\\1/p')\n[ -n \"$session\" ]\n");
-   for(int i=0;i<paths.size();i++)shell.append("if ! pm install-write -S ").append(new File(paths.get(i)).length()).append(" \"$session\" ").append(BackupEngine.q("part"+i+".apk")).append(" ").append(BackupEngine.q(paths.get(i))).append("; then pm install-abandon \"$session\"; exit 1; fi\n");
-   shell.append("if ! pm install-commit \"$session\"; then pm install-abandon \"$session\" || true; exit 1; fi\n");
-   e.run(e.job(),shell.toString(),false);JSONObject after=e.info(pkg);if(before.getInt("uid")!=after.getInt("uid")||before.getLong("version")!=after.getLong("version")||!before.getJSONArray("signers").toString().equals(after.getJSONArray("signers").toString()))throw new IOException("App identity changed unexpectedly");
-   if(!"com.android.vending".equals(e.pm.getInstallSourceInfo(pkg).getInstallingPackageName()))throw new IOException("Installer link was not restored");
+   setInstaller(e,pkg,"com.android.vending");
    return "Google Play installer link restored. The same signed app and splits were reinstalled with data retained. Close and reopen the app; Google Play still verifies your license.";
   }
  }
+ static void setInstaller(BackupEngine e,String pkg,String installer)throws Exception {
+   JSONObject before=e.info(pkg);if(SystemAppData.system(before))throw new IOException("System apps support data backup and restore only");e.pm.getPackageInfo(installer,0);ApplicationInfo info=e.pm.getApplicationInfo(pkg,0);List<String> paths=new ArrayList<>();paths.add(info.sourceDir);if(info.splitSourceDirs!=null)Collections.addAll(paths,info.splitSourceDirs);long total=0;for(String path:paths)total+=new File(path).length();
+   StringBuilder shell=new StringBuilder("result=$(pm install-create -r -i "+BackupEngine.q(installer)+" --user 0 -S "+total+")\necho \"$result\"\nsession=$(printf '%s' \"$result\" | sed -n 's/.*\\[\\([0-9]*\\)\\].*/\\1/p')\n[ -n \"$session\" ]\n");
+   for(int i=0;i<paths.size();i++)shell.append("if ! pm install-write -S ").append(new File(paths.get(i)).length()).append(" \"$session\" ").append(BackupEngine.q("part"+i+".apk")).append(" ").append(BackupEngine.q(paths.get(i))).append("; then pm install-abandon \"$session\"; exit 1; fi\n");
+   shell.append("if ! pm install-commit \"$session\"; then pm install-abandon \"$session\" || true; exit 1; fi\n");
+   shell.append("am force-stop --user 0 ").append(BackupEngine.q(pkg)).append("\n");
+   e.run(e.job(),shell.toString(),false);JSONObject after=e.info(pkg);if(before.getInt("uid")!=after.getInt("uid")||before.getLong("version")!=after.getLong("version")||!before.getJSONArray("signers").toString().equals(after.getJSONArray("signers").toString()))throw new IOException("App identity changed unexpectedly");
+   if(!installer.equals(e.pm.getInstallSourceInfo(pkg).getInstallingPackageName()))throw new IOException("Installer link was not restored");
+ }
  static void captureInstaller(BackupEngine e,JSONObject app)throws Exception {
-  String installer=e.pm.getInstallSourceInfo(app.getString("package")).getInstallingPackageName();if(installer==null)return;
-  try{PackageInfo info=e.pm.getPackageInfo(installer,PackageManager.GET_SIGNING_CERTIFICATES);if(info.signingInfo==null)return;List<String> hashes=new ArrayList<>();for(android.content.pm.Signature sig:info.signingInfo.getApkContentsSigners())hashes.add(BackupEngine.digest(sig.toByteArray()));Collections.sort(hashes);app.put("installer",installer).put("installerSigners",new JSONArray(hashes));}catch(PackageManager.NameNotFoundException ignored){}
+  String installer;try{installer=e.pm.getInstallSourceInfo(app.getString("package")).getInstallingPackageName();}catch(PackageManager.NameNotFoundException|SecurityException unavailable){return;}if(installer==null)return;
+  try{PackageInfo info=e.pm.getPackageInfo(installer,PackageManager.GET_SIGNING_CERTIFICATES);if(info.signingInfo==null)return;List<String> hashes=new ArrayList<>();for(android.content.pm.Signature sig:info.signingInfo.getApkContentsSigners())hashes.add(BackupEngine.digest(sig.toByteArray()));Collections.sort(hashes);app.put("installer",installer).put("installerSigners",new JSONArray(hashes)).put("installerAppSigners",new JSONArray(app.getJSONArray("signers").toString()));}catch(PackageManager.NameNotFoundException ignored){}
  }
  static String verifiedInstaller(BackupEngine e,JSONObject app)throws Exception {
   String installer=app.optString("installer","");if(!installer.matches("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")||!app.has("installerSigners"))return null;
-  try{PackageInfo info=e.pm.getPackageInfo(installer,PackageManager.GET_SIGNING_CERTIFICATES);if(info.signingInfo==null)return null;List<String> hashes=new ArrayList<>();for(android.content.pm.Signature sig:info.signingInfo.getApkContentsSigners())hashes.add(BackupEngine.digest(sig.toByteArray()));Collections.sort(hashes);return new JSONArray(hashes).toString().equals(app.getJSONArray("installerSigners").toString())?installer:null;}catch(PackageManager.NameNotFoundException absent){return null;}
+  try{PackageInfo info=e.pm.getPackageInfo(installer,PackageManager.GET_SIGNING_CERTIFICATES);if(info.signingInfo==null)return null;List<String> hashes=new ArrayList<>();for(android.content.pm.Signature sig:info.signingInfo.getApkContentsSigners())hashes.add(BackupEngine.digest(sig.toByteArray()));Collections.sort(hashes);if(new JSONArray(hashes).toString().equals(app.getJSONArray("installerSigners").toString()))return installer;JSONArray saved=app.getJSONArray("installerSigners");if(saved.length()<1||saved.length()>32)return null;for(int i=0;i<saved.length();i++){String hex=saved.getString(i);if(!hex.matches("[a-f0-9]{64}"))return null;byte[] certificate=new byte[32];for(int j=0;j<32;j++)certificate[j]=(byte)Integer.parseInt(hex.substring(j*2,j*2+2),16);if(!e.pm.hasSigningCertificate(installer,certificate,PackageManager.CERT_INPUT_SHA256))return null;}return installer;}catch(PackageManager.NameNotFoundException absent){return null;}
+ }
+ /** Restore Android installer attribution only for the original installed app signing identity. */
+ static String restoreInstallerLinks(BackupEngine e,JSONObject manifest){
+  StringBuilder report=new StringBuilder();
+  try{
+   JSONArray apps=manifest.getJSONArray("apps");
+   for(int i=0;i<apps.length();i++){
+    JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");
+    if(SystemAppData.system(app))continue;
+    if(!app.has("installer")){report.append(pkg).append(": original store not recorded; existing installer attribution kept.\n");continue;}
+    try{
+     String installer=verifiedInstaller(e,app);
+     if(installer==null){report.append(pkg).append(": store link not restored; the original store is missing or its signing identity differs.\n");continue;}
+     JSONObject current=e.info(pkg);
+     JSONArray original=app.optJSONArray("installerAppSigners");
+     if(original==null)original=app.getJSONArray("signers");
+     if(!original.toString().equals(current.getJSONArray("signers").toString())){report.append(pkg).append(": store link skipped for a differently signed installed app.\n");continue;}
+     if(!installer.equals(e.pm.getInstallSourceInfo(pkg).getInstallingPackageName())){
+      setInstaller(e,pkg,installer);
+      if(!installer.equals(e.pm.getInstallSourceInfo(pkg).getInstallingPackageName()))throw new IOException("Android did not retain the installer attribution");
+     }
+     report.append(pkg).append(installer.equals("com.android.vending")?": Google Play installer link verified.\n":": original store installer link verified.\n");
+    }catch(Exception warning){report.append(pkg).append(": data restored; store-link warning: ").append(warning.getMessage()).append("\n");}
+   }
+  }catch(Exception warning){report.append("Store-link warning: ").append(warning.getMessage()).append("\n");}
+  return report.toString();
  }
  static void validate(BackupEngine e,File job,JSONObject app,int index,Set<String> expected)throws Exception {
   SystemAppData.dataOnly(app);JSONArray apks=app.optJSONArray("apks");if(apks==null)return;if(apks.length()<1||apks.length()>128)throw new IOException("Invalid APK count");Set<String> splits=new HashSet<>();

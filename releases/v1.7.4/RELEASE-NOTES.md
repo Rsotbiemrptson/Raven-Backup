@@ -1,0 +1,17 @@
+Raven Backup 1.7.4 is the latest regular release for the tested Odin OEM root backend.
+
+- Four backup-content choices cover internal and portable-card Android/data/<package>/files and whole Android/obb/<package> folders. New choices default on; existing internal-data choices are kept. Review them in guided setup or Backup preferences. Missing/empty folders are omitted.
+- Stream named storage scopes directly into each per-app ZIP. Restore validates them into staging on their destination volumes before replacement, retaining old directories until commit. A failed transaction can recover across scopes; retained recovery ZIPs still cover private data only.
+- Preserve verified Google Play/original-store installer attribution for data-only as well as app-and-data restores. Same-signed reinstallation retains data when attribution needs repair. Missing metadata/signature mismatches are reported; Play still decides entitlement and update delivery.
+- Recognize app-data root label types declared by the destination firmware, mapping source roots to the installed app. Unknown special per-file labels remain blocked; SELinux enforcement is unchanged.
+- Add an off-by-default Allow system-app migration option for version/firmware differences with confirmation. Same model, package, UID/shared identity and signature remain required. Persistent apps that cannot stay stopped remain refused.
+
+Compatibility: expanded-storage backups use format 5 and require Raven 1.7.4 or newer. Older Raven backups remain readable. Install over the existing signed app; settings and folder grants are preserved. Wait for active backups/restores to finish before updating.
+
+After factory reset: preserve ZIPs/settings independently, install Raven, choose the backup folder and allow storage access, allow optional app-size access or skip it, review the four Backup contents choices, then press Run checks and wait for Checks passed before Continue. Import settings afterward if wanted; review/enable schedules separately. Android permissions and device approval are not imported.
+
+Exact-APK Odin 3 tests passed four-location backup/restore with matching SHA-256 and independent app reads, failure recovery after two swaps, omitted/disabled scopes, legacy format-4 restore, Play attribution and identity guards, and synthetic system/label policies. A preceding candidate passed a 4.125 GiB streamed round trip and additional corruption/legacy/queue checks; details distinguish those runs in Testing. Real system-app migration and actual Play update delivery were not tested.
+
+[Installation](https://github.com/Rsotbiemrptson/Raven-Backup/blob/v1.7.4/docs/INSTALL.md) · [Factory-reset recovery](https://github.com/Rsotbiemrptson/Raven-Backup/blob/v1.7.4/docs/FACTORY-RESET.md) · [Storage and compatibility](https://github.com/Rsotbiemrptson/Raven-Backup/blob/v1.7.4/docs/STORAGE-AND-COMPATIBILITY.md) · [Testing](https://github.com/Rsotbiemrptson/Raven-Backup/blob/v1.7.4/docs/TESTING.md)
+
+Limits: compatible OEM root service required; no generic su/Retroid backend. Other manufacturers and enforcing SELinux remain unverified. Scope excludes arbitrary game libraries/Android/media/adopted or read-only storage. ZIPs are unencrypted/unauthenticated. Keystore secrets, accounts and licenses do not transfer. The owner reports two successful Eden restores around 45 minutes each, without measured logs or exact archive/build identification; this is not a benchmark of format 5. Old backups corrupted by the 1.7.0 ZIP writer must be recreated from original data.

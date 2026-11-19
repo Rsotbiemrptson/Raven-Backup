@@ -26,9 +26,13 @@ Raven keeps a separate data-only recovery ZIP for each app, capturing its state 
 
 ## External app files
 
-Enable **Settings > Backup preferences > Include external app data** before making the backup. This adds the app’s primary shared-storage `Android/data/<package>/files` directory to its ZIP. It supports external payloads up to 512 GiB with ZIP64. The private archive limit remains 16 GiB. Files stored in arbitrary shared folders, Android/obb, or a removable volume’s app directory are outside this option.
+Four switches in **Settings > Backup preferences** and **guided setup > Backup contents** choose internal Android/data/<package>/files, internal Android/obb/<package>, removable-card Android/data/<package>/files, and removable-card Android/obb/<package>. OBB covers the whole app folder, including files directly inside it and a nested files folder if present. New switches default on; the existing internal-data setting is kept. Absent/empty directories are omitted; zero-byte files count as content. Arbitrary game/ROM libraries, Android/media, adopted storage, read-only cards and nonstandard volume layouts remain outside the supported scope. Portable cards use standard public FAT/exFAT-style volume identifiers.
 
-Use a local backup drive that supports files larger than 4 GiB. Raven streams external files into the ZIP and records their checksum as it finishes. Allow room for one finished ZIP, including private data and any APKs. This build reads earlier Raven ZIPs, including format 3 external backups. New external backups use format 4 and require a Raven build with streaming support. Restore streams validated files into staging on primary storage before replacing the app’s external files. Allow space there for a full new copy even if the app already has external files. During replacement Raven keeps the old directory for interrupted-restore recovery. After a completed restore, the retained recovery ZIP covers private data only.
+Raven streams validated source TARs directly into a named-scope TAR inside one per-app ZIP. No full external TAR is staged during backup. Combined external data is limited to 512 GiB and 250,000 paths; private data/installers retain the 16 GiB limit. Use a backup drive/filesystem that supports the resulting file size. Backup folders must be outside the included app-data folders.
+
+New expanded-storage archives use format 5 and require Raven 1.7.4 or newer. Existing formats 1–4 remain readable. Restore stages and validates each included scope on its destination volume before private data replacement, avoiding a full temporary copy of card data on internal storage. Allow room on each destination for its new copy. Old directories remain until commit for rollback/interrupted recovery. The separately retained recovery ZIP covers private data only. Current backup switches do not exclude scopes from an existing archive during restore.
+
+A matching mounted card UUID is preferred. If it is absent and exactly one writable portable card is available, that card is used. Ambiguous mappings and merging multiple source cards are refused. Keep all participating volumes mounted until completion; mount guards protect replacement/recovery/cleanup operations. See [Storage and compatibility](STORAGE-AND-COMPATIBILITY.md).
 
 ## Delete and Purge
 
@@ -36,14 +40,16 @@ Use a local backup drive that supports files larger than 4 GiB. Raven streams ex
 
 ## Store attribution
 
-New full backups record the installing package and its signing-certificate hashes where available. Missing-app restore reuses that attribution only when the installed store matches those hashes. Old archives lack this information. **Repair Google Play link** reinstalls the exact currently installed signed APKs, retaining data; use it only for apps originally acquired through Google Play. It does not supply a license or subscription. The store still checks the real account's entitlement.
+New data-only and full backups record the installing package, its certificate hashes and the app signing identity when available. Missing-app reinstall uses the verified original installer. After data restore, an installed app can receive that attribution through a same-version, same-signed APK/split reinstall with data retained and identity rechecked. This is necessary on the tested Odin 3 because direct installer reassignment from UID 0 is rejected.
+
+Google Play/original-store links are restored only when the store is present with the recorded certificate or verified signing lineage, and the installed app matches the recorded app signer. Store-link warnings appear in single/queued restore reports without treating verified data as failed. Missing legacy metadata is not guessed. **Repair Google Play link** remains available for apps originally acquired from Google Play. Attribution does not transfer licenses, subscriptions, accounts, Play Integrity results or entitlement, and does not guarantee update delivery.
 
 ## Current limits
 
 Device and firmware differences require migration confirmation. See [Migration](MIGRATION.md) and [Recovery backups](RECOVERY.md).
 
 - Only the observed Odin OEM root protocol is implemented; no generic su/Magisk backend.
-- User 0 and eligible app identities only; user-app migration requires explicit confirmation. Eligible system apps are data-only and require strict same-identity/device/firmware restore.
+- User 0 and eligible app identities only; user-app migration requires explicit confirmation. Eligible system apps are data-only and retain same-model/identity/ownership/signature checks; a separate opt-in and warning permit version or firmware differences.
 - Live metadata checks were demonstrated with SELinux Permissive. Enforcing/cross-firmware restore is unverified; Raven does not change enforcement.
 - No Android Keystore export, account recovery, runtime-permission restoration, store-entitlement transfer, game downloads outside the supported external app files directory, or general ACL/capability preservation.
 - ZIPs are unencrypted and unauthenticated. Imported data and scripts require trust.
@@ -76,7 +82,7 @@ The Advanced card in Settings starts collapsed. Tap its header or chevron to exp
 
 ### Backup contents and selection
 
-External app data is included by default for new settings; an existing explicit choice is preserved. Confirmation states whether primary external files are included. This covers internal shared storage's Android/data/<package>/files, not arbitrary game libraries, ROM folders, or physical SD-card app directories. System-app backups always omit installers, even when installer backup is enabled for a mixed selection.
+Four app-storage scope switches default on for new settings; an existing internal-data choice is preserved. Confirmation lists selected internal/card data and OBB choices. Missing and empty folders are omitted. System-app backups always omit installers, even in a mixed selection.
 
 Backup has Refresh, Show selected, Select all and Clear. Selections survive searching and filtering. In landscape these four equal compact buttons share one row with the backup action, which receives the remaining width. Portrait uses a separate backup row.
 
@@ -84,7 +90,7 @@ Android Developer Verifier, Android System Key Verifier and Android System Safet
 
 ### Supported system data
 
-System-app data is limited to supported identities. Ordinary per-app UIDs without a shared identity are allowed; the special shared system identity is restricted to com.odin.gameassistant. Other shared/core identities remain unsupported. System restores require the same installed system identity, UID, signature, version, model, Android version and underlying firmware. General migration or signature/version preferences do not bypass these checks. A system app that restarts after being stopped is refused. Game Assistant on the tested Odin 3 cannot stay stopped and is refused; its backup/restore is unsupported. Files outside supported private/primary-external directories are not captured.
+System-app data is limited to supported identities. Ordinary per-app UIDs without a shared identity are allowed; the special shared system identity is restricted to com.odin.gameassistant. Other shared/core identities remain unsupported. The same installed package, UID/shared identity, signing certificate and model are required. **Allow system-app migration** defaults off; enable it in Restore preferences to attempt a different app version or firmware, then explicitly confirm the risk warning. A changed data schema may cause app/device problems despite file verification. General signature overrides do not bypass system-app signer checks. Apps that cannot remain stopped, including tested Odin 3 Game Assistant, are refused. Real system migrations were not performed in release testing; policy branches were tested synthetically.
 
 ### Long operations and native burn-in protection
 

@@ -24,22 +24,23 @@ final class SystemAppData {
  static void dataOnly(JSONObject app)throws Exception{
   if(system(app)&&app.has("apks"))throw new IOException("System-app backups must contain data only");
  }
- static void require(JSONObject saved,JSONObject current,JSONObject manifest)throws Exception{
+ static void require(JSONObject saved,JSONObject current,JSONObject manifest)throws Exception{require(saved,current,manifest,false);}
+ static void require(JSONObject saved,JSONObject current,JSONObject manifest,boolean allowMigration)throws Exception{
   if(!system(saved)&&!system(current))return;
   dataOnly(saved);
   if(!system(saved)||!system(current))throw new IOException("System-app data requires a matching system-app backup");
   if(!saved.getString("package").equals(current.getString("package"))
     ||saved.getInt("uid")!=current.getInt("uid")
-    ||saved.getLong("version")!=current.getLong("version")
     ||!saved.getJSONArray("signers").toString().equals(current.getJSONArray("signers").toString())
     ||!saved.optString("sharedUser").equals(current.optString("sharedUser")))
-   throw new IOException("System-app restore requires the same installed identity, version and signature");
-  if(!FirmwareCheck.matches(manifest,FirmwareCheck.current()))
-   throw new IOException("System-app data requires the same device model, Android version and firmware");
+   throw new IOException("System-app restore requires the same installed package, UID and signature");
+  if(!manifest.getString("model").equals(android.os.Build.MODEL))throw new IOException("System-app data requires the same device model");
+  if((saved.getLong("version")!=current.getLong("version")||!FirmwareCheck.matches(manifest,FirmwareCheck.current()))&&!allowMigration)
+   throw new IOException("System app version or firmware differs. This may cause app or device problems. Enable Allow system-app migration in Settings → Restore preferences, then review the warning.");
  }
  static boolean context(JSONObject app,String value){
   if(value==null)return false;
-  if(value.matches("u:object_r:app_data_file:s0(:c[0-9]+(,c[0-9]+)*)?"))return true;
+  if(AppLabelPolicy.accepts(value))return true;
   return system(app)&&value.equals("u:object_r:system_app_data_file:s0");
  }
  static final class Running extends IOException {

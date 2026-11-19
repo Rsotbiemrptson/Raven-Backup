@@ -14,10 +14,11 @@ final class RestorePreparation {
    +installed.getLong("version")+":"+installed.getJSONArray("signers");
  }
  static String prepare(BackupEngine engine,File job,JSONObject manifest,Map<String,String> approvedSigners)throws Exception {
+  AppLabelPolicy.load();
   FirmwareCheck.validate(manifest);
   StringBuilder description=new StringBuilder();JSONArray apps=manifest.getJSONArray("apps");
   for(int i=0;i<apps.length();i++){
-   JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");JSONObject current=engine.info(pkg);SystemAppData.require(app,current,manifest);
+   JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");JSONObject current=engine.info(pkg);SystemAppData.require(app,current,manifest,RestorePreferences.prefs(engine.c).getBoolean(RestorePreferences.SYSTEM,false));
    String approved=approvedSigners.get(pkg);
    boolean differentSignature=RestorePreferences.differentSignature(app,current);
    boolean differentVersion=RestorePreferences.differentVersion(app,current);
@@ -41,7 +42,7 @@ final class RestorePreparation {
     for(TarGuard.Record record:records)if(record.uid!=oldUid||record.gid!=oldUid||(record.mode&~0777L)!=0)throw new IOException("Unsupported saved ownership or special permissions in "+pkg);
     File sidecar=new File(job,payload.getString("labels"));String[] pairs=BackupEngine.read(sidecar,32*1024*1024).split("\0",-1);String rootContext=null;
     for(int k=0;k<pairs.length-1;k+=2)if(TarGuard.path(pairs[k]).isEmpty())rootContext=pairs[k+1];
-    if(!SystemAppData.context(app,rootContext))throw new IOException("Unsupported saved app security context");
+    if(!AppLabelPolicy.sourceRoot(rootContext))throw new IOException("Unsupported saved app security context");
     StringBuilder adapted=new StringBuilder();for(int k=0;k<pairs.length-1;k+=2){String normalized=TarGuard.path(pairs[k]);if(!pairs[k+1].equals(rootContext))for(TarGuard.Record record:records)if(record.path.equals(normalized)&&(record.directory||record.symlink||record.fifo))throw new IOException("Category-free profile must be a regular file");String mapped=SelinuxLabels.adapt(pairs[k],pairs[k+1],rootContext,context);adapted.append(pairs[k]).append('\0').append(mapped).append('\0');}
     BackupEngine.write(sidecar,adapted.toString());
     File tar=new File(job,payload.getString("tar"));if(oldUid!=newUid)TarGuard.remapOwners(tar,oldUid,newUid,pkg);
@@ -49,7 +50,7 @@ final class RestorePreparation {
    }
    if(!ce&&!SystemAppData.system(app))throw new IOException("Credential-protected app data missing: "+pkg);app.put("uid",newUid);
    // Pin the staged plan to the approved installation for the final compatibility check.
-   if(differentSignature||differentVersion){app.put("signers",current.getJSONArray("signers"));app.put("version",current.getLong("version"));app.remove("apks");}
+   if(differentSignature||differentVersion){if(app.has("installer")&&!app.has("installerAppSigners"))app.put("installerAppSigners",new JSONArray(app.getJSONArray("signers").toString()));app.put("signers",current.getJSONArray("signers"));app.put("version",current.getLong("version"));app.remove("apks");}
   }
   BackupEngine.write(new File(job,"manifest.json"),manifest.toString(2));return description.toString();
  }

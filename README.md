@@ -11,9 +11,11 @@ Raven Backup is an experimental Android app for backing up user-app private data
 ## What it does
 
 - Select multiple installed user apps for backup, with a ZIP per app and a history of versions. Search for apps one at a time without losing selections, then use **Show selected** to review them together.
-- Include the original signed base APK and installed splits, or back up private data only. Stream primary external app files into the ZIP, enabled by default for new settings; existing choices are preserved. Raven 1.7.3 reads older backups. New streamed ZIPs require 1.7.0 or newer.
+- Include the original signed base APK and installed splits, or back up private data only. Stream selected internal/portable-card Android/data files and whole app OBB folders into each ZIP. Four choices appear in guided setup and Backup preferences; new choices default on and the existing internal-data choice is preserved. Missing/empty folders are omitted. Raven 1.7.4 reads older backups; expanded format-5 backups require 1.7.4 or newer.
 - Choose one local/internal-storage or portable SD folder for both backups and the Restore list. Storage permission is requested only when missing.
 - Handle legitimate newline filenames and recreate private app FIFOs. Allow app-scoped symbolic links to the same app’s primary external files; verify linked files exist in a staged external restore. Other links and device nodes remain blocked.
+- Recognize firmware-declared app-data root label types and map source root labels to the installed destination. Unknown special per-file labels remain blocked.
+- Preserve verified original-store attribution for data-only and app-and-data restores, including Google Play links. Missing metadata or incompatible signing identities are reported; store attribution does not transfer licenses or guarantee update delivery.
 - Automatically remove completed-job launcher scripts from internal storage, including verified leftovers from earlier runs. Unfinished or unrecognized scripts are retained; backup ZIPs and recovery copies are unaffected.
 - Name new archives `AppName_MM-DD-YYYY.zip`, with `_2`, `_3`, etc. for additional same-day versions.
 - Review local/SD restore queues using checked metadata first. Fully validate private data and installers at each app’s turn, and validate/write large external files together before replacing app data. Non-seekable inputs and older multi-app ZIPs keep full up-front validation.
@@ -23,7 +25,7 @@ Raven Backup is an experimental Android app for backing up user-app private data
 - Delete selected ZIPs after confirmation. **Settings > Advanced > Purge all backups** can empty the chosen backup folder, including non-ZIP files and all subfolders, after confirmation; the selected root folder is kept.
 - Prepare app-size estimates and choose Package ID, App name or Size order, ascending or descending, in Backup preferences. Optional Usage access speeds size estimates; checked file counting remains available.
 - Keep manual backups/restores running with the screen off using an ongoing notification and CPU wake lock, subject to Android background limits. Progress names the current app and its position in the batch.
-- Back up eligible system-app data without APKs, with strict same-device/firmware restore checks. Persistent apps that cannot stay stopped, including tested Odin 3 Game Assistant, are refused with a warning.
+- Back up eligible system-app data without APKs. An off-by-default system-app migration option permits app-version or firmware differences after confirmation; the same model, package, ownership and signing identity remain required. Persistent apps that cannot stay stopped, including tested Odin 3 Game Assistant, are refused.
 - Schedule approximate daily/weekly backups with charging/idle options and optional Android battery-optimization exemption.
 - Choose light, dark or system appearance and customize the accent using a color wheel, RGB sliders, hex input or Raven-family presets.
 - Enable explicit signature or version overrides under Restore preferences for data-only restore to an installed app with the same package ID. Raven keeps the installed APK and creates a recovery copy.
@@ -42,7 +44,7 @@ The app uses Java and Android framework APIs without a Gradle dependency graph. 
 - `src/`, `res/`, `AndroidManifest.xml`: app source and resources.
 - `build.ps1`: portable app/fixture build script.
 - `tests/`: host checks, Android test helper and disposable fixture source.
-- `releases/v1.7.3/`: the current signed APK and checksum.
+- `releases/v1.7.4/`: the current signed APK and checksum.
 - `docs/`: installation, removal, usage, build and validation notes.
 
 ## License and contributions

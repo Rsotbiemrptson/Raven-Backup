@@ -4,7 +4,7 @@ These steps apply to Raven Backup 1.7.2 on a compatible Odin 2 or Odin 3. A fact
 
 ## Before resetting
 
-1. Back up the apps you want. Enable **Include app APKs and installed splits** if you want to reinstall them from the backups as well as restore their private data. Check **Include external app data**, enabled by default for new settings, to capture supported primary external files. Use Raven 1.7.0 or newer to restore streamed backups. See [External app files](USAGE.md#external-app-files) for scope and staging space.
+1. Back up the apps you want. Enable **Include app APKs and installed splits** if you want to reinstall them from the backups as well as restore their private data. Review the four app-storage choices in **Backup preferences** to capture internal/card Android/data files and whole app OBB folders. New choices default on; an existing internal-data choice is preserved. Use Raven 1.7.4 or newer to restore expanded format-5 backups. See [External app files](USAGE.md#external-app-files) for scope and staging space.
 2. Copy the backup folder and Raven APK to a computer or other storage that will not be erased. Internal-storage backups can be erased by the reset. Keep this separate copy until recovery is complete.
 3. Optionally use **Settings > Settings & configuration > Export settings** and preserve that JSON alongside your independent backup copy. It contains preferences and schedule choices, not app data or Android grants.
 4. Resolve any pending restore before resetting. Account passwords, store purchases, Android Keystore keys and extra game downloads are not included in the ZIPs.
@@ -40,3 +40,5 @@ The tested environments were stock Odin 2 firmware 1.0.0.318 and its documented 
 
 
 Android Keystore-bound secrets, accounts, runtime permission grants and external game downloads are not restored by copying app files. Some apps will therefore require their own recovery or sign-in even when their saved files are present. See [Usage and limits](USAGE.md) and [Removal and cleanup](UNINSTALL.md).
+
+On a fresh device, review the four Backup contents choices in guided setup before Run checks. Keep removable cards mounted throughout backup/restore. A matching card UUID is preferred; the sole available writable portable card can be used when the original UUID is absent. Ambiguous mappings are refused. Restoring Android store attribution does not replace Play sign-in or entitlement checks.

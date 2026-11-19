@@ -1,5 +1,19 @@
 # Validation and development testing
 
+## Version 1.7.4 — November 18, 2026
+
+Exact signed APK SHA-256: `b71379a5e5790b83c2e8bb2af50dafb64101624d8d703676c93217048c473299`, code 37, Odin 3 / Android 15 / SELinux Permissive. The installed APK matched the staged build. Eleven host suites plus settings and external/scoped TAR parser tests passed. On the exact build, disposable tests passed:
+
+- All four internal/card data/OBB sources streamed into one format-5 ZIP; Restore catalog, indexed review and sequential validation recognized it. SHA-256 matched after restore and the app independently read all four through Android external-files/OBB APIs. Disabled and empty scopes were omitted.
+- Injecting failure after two external swaps restored previous external contents. No pending restore, test app or test backup folder remained. Legacy format 4 restored.
+- Data-only and APK-plus-data Google Play attribution restored, with independent private-data reads. Wrong app/store signing identities and missing legacy metadata did not receive guessed attribution. Actual Play update delivery is not established by a synthetic helper with no store listing.
+- Synthetic system-version/firmware tests exercised the opt-in while retaining model/UID/signer checks. No real system app was changed. Firmware-declared app-root types, source-root mapping, category/range bounds and rejection of undeclared destination/privileged child labels passed.
+
+A preceding candidate of the same scoped streaming backend also passed a 4.125 GiB backup/restore with SHA-256 verification, zero-byte preservation, extra-file removal and guided setup rollback/reinstall/fresh-UID checks. Separate preceding-candidate regressions refused corrupt external digest/CRC/path, changed source and invalid private payloads, and restored format 3 with late queue validation. Later changes adjusted review text, catalog recognition, label parsing and output path/count bounds; exact-build focused checks above were rerun. Do not describe those large/regression runs as a full repeat on the final APK.
+
+The owner separately reports two successful Eden restores and remembers about 45 minutes each; exact archive/build and measured timing were not recorded. This is user-reported field experience, not a benchmark of the new four-scope format. The moving black lines were not reproduced during a watched 1.7.3 guided-setup run on November 18; no display-setting fix is claimed.
+
+
 ## Version 1.7.3 launcher cleanup — November 14, 2026
 
 Exact APK SHA-256: `0eab98d85c97e5c8a640cab11b2b8f5cf643a6f592495f8812d910d7f4e2bf79` (code 36), installed and tested on Odin 3 / Android 15, using existing internal-storage access and an isolated disposable-app backup folder. All eleven dependency-free host suites passed; app and bundled helper signatures were verified.

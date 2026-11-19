@@ -1,11 +1,12 @@
 # Current release
 
-Raven Backup 1.7.3, version code 36, package `dev.raven.backup`.
+Raven Backup **1.7.4**, version code 37, package `dev.raven.backup`.
 
-The exact signed APK passed automatic cleanup of seven old launchers, creation/removal during a disposable-app backup, completed-ZIP validation, failed-job cleanup and on-device script-preservation/symlink guards on Odin 3. All eleven host suites passed. Existing backup/restore formats are unchanged. Earlier restore and cross-device observations remain documented in [Testing](docs/TESTING.md).
+Adds four internal/card app-data/OBB backup choices, scoped streaming and transactional external restore, verified store attribution for data-only restores, firmware-declared app-root label recognition, and guarded opt-in system-app version/firmware migration. Exact-build device tests and limits are recorded in [Testing](docs/TESTING.md). Expanded format-5 backups require 1.7.4 or newer; older backups remain readable.
 
-- [Final APK](releases/v1.7.3/RavenBackup-1.7.3.apk)
-- [Checksum](releases/v1.7.3/SHA256SUMS.txt)
-- [Release notes](releases/v1.7.3/RELEASE-NOTES.md)
+- [Final APK](releases/v1.7.4/RavenBackup-1.7.4.apk)
+- [Checksum](releases/v1.7.4/SHA256SUMS.txt)
+- [Release notes](releases/v1.7.4/RELEASE-NOTES.md)
 - [Installation](docs/INSTALL.md)
 - [Factory-reset recovery](docs/FACTORY-RESET.md)
+- [Storage and compatibility](docs/STORAGE-AND-COMPATIBILITY.md)

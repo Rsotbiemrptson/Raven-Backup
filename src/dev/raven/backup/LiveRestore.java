@@ -17,7 +17,7 @@ final class LiveRestore {
  boolean keepRollback=true;
  boolean launchAfter=false;
  String lastStoreReport="";
- static final class Plan {File job;Uri source;IndexedArchive.Stamp sourceStamp;boolean deferredExternal,metadataOnly,requiresSystemConsent;String headerIdentity;JSONObject manifest;String description,migrationWarning="",migrationKey="",migrationApproval;final Map<String,String> approvedSigners=new HashMap<>();}
+ static final class Plan implements java.io.Closeable {PasswordVault.Lease passwordLease;public void close(){if(passwordLease!=null){passwordLease.close();passwordLease=null;}}File job;Uri source;IndexedArchive.Stamp sourceStamp;boolean deferredExternal,metadataOnly,requiresSystemConsent;String headerIdentity,reviewedMapping;JSONObject manifest;String description,migrationWarning="",migrationKey="",migrationApproval;final Map<String,String> approvedSigners=new HashMap<>();}
  void reviewEnvironment(Plan plan)throws Exception{plan.migrationWarning=FirmwareCheck.warning(plan.manifest);plan.migrationKey=FirmwareCheck.approvalKey(plan.manifest);if(systemMigration(plan.manifest)){plan.requiresSystemConsent=true;plan.migrationWarning+="\n\nSystem-app data comes from a different app version or firmware. It may cause app or device problems. Continue only if you accept this risk.";}}
  boolean systemMigration(JSONObject manifest)throws Exception{JSONArray apps=manifest.getJSONArray("apps");for(int i=0;i<apps.length();i++){JSONObject app=apps.getJSONObject(i);if(!SystemAppData.system(app))continue;try{if(app.getLong("version")!=engine.info(app.getString("package")).getLong("version")||!FirmwareCheck.matches(manifest,FirmwareCheck.current()))return true;}catch(android.content.pm.PackageManager.NameNotFoundException missing){/* Compatibility review reports a missing system app separately. */}}return false;}
  void approveMigration(Plan plan){plan.migrationApproval=plan.migrationKey;}
@@ -27,14 +27,16 @@ final class LiveRestore {
  String verificationKey()throws Exception{StringBuilder key=new StringBuilder(Build.FINGERPRINT);for(String pkg:FIXTURES)key.append(engine.info(pkg).toString());return BackupEngine.digest(key.toString().getBytes("UTF-8"));}
  boolean enabled(){return Build.FINGERPRINT.equals(engine.c.getSharedPreferences("live-restore",0).getString("general-verified",null));}
  Plan prepare(Uri uri)throws Exception {
-  return prepare(importArchive(uri),null);
+  Plan plan=importArchive(uri);try{return prepare(plan,null);}catch(Exception failure){discard(plan);throw failure;}
  }
  Plan importArchive(Uri uri)throws Exception{return importArchive(uri,false);}
  Plan importArchive(Uri uri,boolean quickReview)throws Exception {
   if(!testing&&!enabled())throw new IOException("Live restore is not verified on this firmware");
-  Plan plan=new Plan();plan.source=uri;plan.job=engine.job();try{IndexedArchive.Result indexed=IndexedArchive.read(engine,uri,plan.job,quickReview);if(indexed!=null&&indexed.metadataOnly&&indexed.manifest.getJSONArray("apps").length()>1)indexed=IndexedArchive.read(engine,uri,plan.job,false);if(indexed!=null){plan.manifest=indexed.manifest;plan.sourceStamp=indexed.stamp;plan.metadataOnly=indexed.metadataOnly;plan.headerIdentity=indexed.headerIdentity;plan.deferredExternal=ExternalData.metadata(plan.manifest)!=null;}else try(InputStream in=engine.c.getContentResolver().openInputStream(uri)){if(in==null)throw new IOException("Cannot read backup");plan.manifest=engine.unpack(in,plan.job);}}catch(Exception e){engine.clean(plan.job);throw e;}
+  Plan plan=new Plan();plan.source=uri;plan.job=engine.job();try{IndexedArchive.Result indexed=IndexedArchive.read(engine,uri,plan.job,quickReview);if(indexed!=null&&indexed.metadataOnly&&indexed.manifest.getJSONArray("apps").length()>1)indexed=IndexedArchive.read(engine,uri,plan.job,false);if(indexed!=null){plan.manifest=indexed.manifest;plan.sourceStamp=indexed.stamp;plan.metadataOnly=indexed.metadataOnly;plan.headerIdentity=indexed.headerIdentity;plan.deferredExternal=ExternalData.metadata(plan.manifest)!=null;}else try(InputStream in=engine.archiveStream(uri)){if(in==null)throw new IOException("Cannot read backup");plan.manifest=engine.unpack(in,plan.job);}}catch(Exception e){engine.clean(plan.job);throw e;}
+  plan.passwordLease=PasswordVault.pin(uri);
   return plan;
  }
+ void discard(Plan plan){engine.clean(plan.job);plan.close();}
  void materialize(Plan plan)throws Exception{
   if(!plan.metadataOnly)return;IndexedArchive.unchanged(engine,plan);IndexedArchive.Result full=IndexedArchive.read(engine,plan.source,plan.job,false);if(full==null||!plan.headerIdentity.equals(full.headerIdentity))throw new IOException("Backup metadata changed after review");plan.manifest=full.manifest;plan.metadataOnly=false;
  }
@@ -42,9 +44,9 @@ final class LiveRestore {
   materialize(plan);
   if(packages!=null){JSONArray filtered=new JSONArray();Set<String> found=new HashSet<>();JSONArray apps=plan.manifest.getJSONArray("apps");for(int i=0;i<apps.length();i++){JSONObject app=apps.getJSONObject(i);String pkg=app.getString("package");if(packages.contains(pkg)){filtered.put(app);found.add(pkg);}}if(filtered.length()==0||!found.equals(packages))throw new IOException("Selected apps are absent from this backup");plan.manifest.put("apps",filtered);}
   plan.requiresSystemConsent|=systemMigration(plan.manifest);
-  plan.description=RestorePreparation.prepare(engine,plan.job,plan.manifest,plan.approvedSigners);if(plan.migrationWarning.isEmpty())plan.description=FirmwareCheck.source(plan.manifest)+"\n\n"+plan.description;plan.description+=ExternalScopes.description(plan.manifest);compatible(plan.manifest);return plan;
+  plan.description=RestorePreparation.prepare(engine,plan.job,plan.manifest,plan.approvedSigners);if(plan.migrationWarning.isEmpty())plan.description=FirmwareCheck.source(plan.manifest)+"\n\n"+plan.description;plan.description+=ExternalScopes.description(plan.manifest);compatible(plan.manifest);if(plan.reviewedMapping==null)plan.description+=RestorePreview.describe(engine,plan);return plan;
  }
- String restore(Plan plan,boolean keep,boolean launch)throws Exception{synchronized(LiveRestore.class){keepRollback=keep;launchAfter=launch;return restoreInternal(plan,false);}}
+ String restore(Plan plan,boolean keep,boolean launch)throws Exception{synchronized(LiveRestore.class){keepRollback=keep;launchAfter=launch;try{return restoreInternal(plan,false);}finally{plan.close();}}}
  static void durable(File f,String text)throws Exception{
   File temporary=new File(f.getParentFile(),f.getName()+".new");try(FileOutputStream out=new FileOutputStream(temporary)){out.write(text.getBytes("UTF-8"));out.getFD().sync();}
   android.system.Os.rename(temporary.getPath(),f.getPath());java.io.FileDescriptor directory=android.system.Os.open(f.getParent(),android.system.OsConstants.O_RDONLY,0);try{android.system.Os.fsync(directory);}finally{android.system.Os.close(directory);}
@@ -138,7 +140,7 @@ final class LiveRestore {
   }
  }
 
- String restore(Uri uri,boolean injectFailure)throws Exception{synchronized(LiveRestore.class){return restoreInternal(prepare(uri),injectFailure);}}
+ String restore(Uri uri,boolean injectFailure)throws Exception{synchronized(LiveRestore.class){Plan plan=prepare(uri);try{return restoreInternal(plan,injectFailure);}finally{plan.close();}}}
  String restoreInternal(Plan plan,boolean injectFailure)throws Exception{
   lastStoreReport="";
   if(!testing&&!enabled())throw new IOException("Live restore is not verified on this firmware");
@@ -149,7 +151,9 @@ final class LiveRestore {
   if((plan.requiresSystemConsent||systemMigration(manifest))&&!FirmwareCheck.approvalKey(manifest).equals(plan.migrationApproval))throw new IOException("Review and confirm the system-app migration warning first");
   IndexedArchive.unchanged(engine,plan);
   preflight(incoming,manifest);
+  JSONObject external=RestorePreview.require(engine,plan);
   List<String> packages=new ArrayList<>();JSONArray apps=manifest.getJSONArray("apps");for(int i=0;i<apps.length();i++)packages.add(apps.getJSONObject(i).getString("package"));
+  TransferProgress.phase("Creating verified recovery protection",-1);
   File rollback=engine.job();JSONObject snapshot=engine.archive(packages,rollback,false);
   int rollbackFiles=0;for(int i=0;i<snapshot.getJSONArray("apps").length();i++){JSONArray payloads=snapshot.getJSONArray("apps").getJSONObject(i).getJSONArray("payloads");for(int j=0;j<payloads.length();j++)for(TarGuard.Record entry:TarGuard.records(new File(rollback,payloads.getJSONObject(j).getString("tar")),snapshot.getJSONArray("apps").getJSONObject(i).getString("package")))if(!entry.directory&&!entry.symlink&&!entry.fifo)rollbackFiles++;}
   // Re-import the rollback ZIP to check manifest, CRC and hashes before any live deletion.
@@ -166,7 +170,6 @@ final class LiveRestore {
    }
   }
   String exported=keepRollback?RecoveryStore.save(engine,verifiedRollback,snapshot):"temporary recovery copy";File control=engine.job();JSONObject record=new JSONObject().put("control",control.getPath()).put("rollback",verifiedRollback.getPath()).put("zip",zip.getPath()).put("exported",exported).put("keepRollback",keepRollback).put("incoming",incoming.getPath()).put("rollbackRegularFiles",rollbackFiles).put("manifest",snapshot);
-  JSONObject external=ExternalData.transaction(engine,plan);
   if(external!=null)record.put("externalTransaction",external);
   durable(new File(engine.c.getFilesDir(),"live-last.json"),record.toString(2));
   if(external!=null)durable(new File(control,"state"),"staging-external");
@@ -175,6 +178,8 @@ final class LiveRestore {
    try{releaseCopies(record);durable(new File(control,"state"),"recovered");clearPending(control);}catch(Exception cleanup){failure.addSuppressed(cleanup);}
    throw failure;
   }
+  try(ArchiveAccess.Handle authenticated=engine.openArchive(plan.source)){authenticated.verifyEncryption();}catch(Exception failure){releaseCopies(record);clearPending(control);throw failure;}
+  IndexedArchive.unchanged(engine,plan);
   durable(new File(control,"state"),"prepared");
   String undo=replace(verifiedRollback,snapshot)+ExternalData.undo(external,control),apply=replace(incoming,manifest)+ExternalData.apply(external,control);
   StringBuilder shell=new StringBuilder();
@@ -185,6 +190,7 @@ final class LiveRestore {
   // Failure injection runs after the first app has been fully restored, exercising cross-app rollback.
   if(injectFailure){JSONObject one=new JSONObject(manifest.toString());JSONArray first=new JSONArray();first.put(apps.getJSONObject(0));one.put("apps",first);shell.append(replace(incoming,one)).append("echo 'Injected failure after first app'\nexit 77\n");}else shell.append(apply);
   shell.append(journal(control,"data-verified")).append("trap finish EXIT\necho 'Live data and metadata verified'\n");
+  TransferProgress.phase("Replacing private data and verifying ownership, permissions and labels",-1);
   try{engine.run(control,shell.toString(),false);}catch(Exception e){String s=state(control);if(s.equals("rolled-back")){releaseCopies(record);clearPending(control);return "Restore failed and rollback verified. "+(keepRollback?"Recovery backups are available in Restore.":"Temporary recovery copies removed.")+"\n"+BackupEngine.read(new File(control,"root.log"),1024*1024);}throw e;}
   if(simulateInterruption)throw new IOException("Simulated app interruption after data verification; durable recovery journal retained");
   String storeResult=ApkBackup.restoreInstallerLinks(engine,manifest);lastStoreReport=storeResult;

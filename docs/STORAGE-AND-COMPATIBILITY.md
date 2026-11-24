@@ -1,6 +1,6 @@
-# Storage and compatibility — Raven Backup 1.7.4
+# Storage and compatibility — Raven Backup 1.8.0
 
-Version 1.7.4 retains the existing signing identity, preferences and folder grants when installed as an update. Android 11/API 30 remains the minimum. The root transport remains the Odin PServerBinder backend; this does not introduce generic su or Retroid support.
+Version 1.8.0 retains the existing signing identity, preferences and folder grants when installed as an update. Android 11/API 30 remains the minimum. The tested root transport remains the Odin PServerBinder backend. Standard su is now an explicit option on already-rooted devices; that option and Retroid/other manufacturers still lack real-device acceptance.
 
 ## Backup contents
 
@@ -43,3 +43,5 @@ Backups without installer metadata cannot establish the original store; existing
 - A preceding candidate of the same scoped streaming backend passed a 4.125 GiB streamed backup/restore with SHA-256 verification, zero-byte preservation and extra-file removal, plus guided setup rollback/reinstall/fresh-UID checks. Subsequent changes adjusted review text, metadata warnings and missing-system-app handling; focused tests were rerun on the final candidate. Large compressible synthetic data is not a real-world throughput benchmark.
 
 Raw logs, device identifiers, test APKs and acceptance hashes stay outside public source under local Outputs staging. They must be reviewed before any stable release is promoted.
+
+encrypted containers use `.rbk` and require a seekable local/internal or portable-card provider and their original password. Plain ZIP compatibility is retained. An explicit `su` backend is available only on already-rooted devices and is not hardware validation. Guided checks probe required tools, labels, ownership, rename and disposable restore behavior. Restore preview names destination folders/cards and conservative staging/recovery budgets; mapping and space are rechecked before replacement.

@@ -17,3 +17,5 @@ Managed recovery ZIPs are kept in Raven's private app storage, separate from the
 **Settings > Advanced > Purge all backups** affects the selected normal-backup folder, not managed recovery storage. The recovery manager does not discover or automatically delete legacy exported ZIPs in the old `RavenBackupRollbacks` folder; those can be imported manually if needed.
 
 The recovery archive carries a recovery marker, but the same archive, package-version/signature, ownership, permission and SELinux-label checks apply. It is not a system image or a way to recover Android Keystore secrets. Confirm app data and game progress inside the restored app before deleting its recovery copy.
+
+Encrypted main backups (1.8.0+) do not encrypt private recovery ZIPs. Retention never deletes recovery backups; manage them separately. Full archive verification and space checks precede target replacement. If an operation is interrupted, do not start another restore before reviewing/recovering the durable pending transaction.

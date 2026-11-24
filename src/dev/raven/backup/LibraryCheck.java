@@ -18,14 +18,13 @@ final class LibraryCheck {
   return "PASS folder read/write/rename/delete access. Existing backups were not scanned or changed.";
  }
  static final class Verification {
-  final List<BackupCatalog.Entry> failed=new ArrayList<>();int passed;
-  String report(){StringBuilder s=new StringBuilder("Verified "+passed+" backups; "+failed.size()+" need attention.\n");for(BackupCatalog.Entry e:failed)s.append("\n").append(e.name).append("\n").append(e.validationProblem).append("\n");return s.append("\nNo backup was deleted. Installed app data was not changed.").toString();}
+  final List<BackupCatalog.Entry> failed=new ArrayList<>();int passed,locked;
+  String report(){StringBuilder s=new StringBuilder("Verified "+passed+" backups; "+failed.size()+" need attention; "+locked+" require a password.\n");for(BackupCatalog.Entry e:failed)s.append("\n").append(e.name).append("\n").append(e.validationProblem).append("\n");return s.append("\nNo backup was deleted. Installed app data was not changed.").toString();}
  }
  static Verification inspect(Context context,Uri tree)throws Exception{
   Verification result=new Verification();BackupEngine engine=new BackupEngine(context);
-  for(BackupCatalog.Entry entry:BackupCatalog.list(context,tree)){if(Thread.currentThread().isInterrupted())throw new InterruptedIOException("Verification interrupted");File job=engine.job();try(InputStream in=context.getContentResolver().openInputStream(entry.uri)){
-   if(in==null)throw new IOException("Cannot read backup");engine.unpack(in,job);BackupIssues.clear(context,entry);result.passed++;
-  }catch(InterruptedIOException interrupted){throw interrupted;}catch(Exception invalid){BackupIssues.mark(context,entry,BackupIssues.reason(invalid));result.failed.add(entry);}finally{engine.clean(job);}}
+  for(BackupCatalog.Entry entry:BackupCatalog.list(context,tree)){if(Thread.currentThread().isInterrupted())throw new InterruptedIOException("Verification interrupted");try{ArchiveVerifier.verify(engine,entry.uri);ArchiveVerifier.mark(context,entry.uri);BackupIssues.clear(context,entry);result.passed++;}catch(PasswordVault.Required locked){result.locked++;}catch(InterruptedIOException interrupted){throw interrupted;}catch(Exception invalid){BackupIssues.mark(context,entry,BackupIssues.reason(invalid));result.failed.add(entry);}}
+
   return result;
  }
 }

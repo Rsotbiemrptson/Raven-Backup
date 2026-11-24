@@ -10,8 +10,12 @@ Raven Backup is an experimental Android app for backing up user-app private data
 
 ## What it does
 
+- Show transfer stages, bytes, speed and estimated time when a size is known; preview replaced folders and conservative restore-space requirements.
+- Optionally verify each completed archive and show its last-verified date. Optional retention keeps the newest chosen number per app only after a new backup passes full verification; recovery, locked and unrecognized files are kept.
+- Optionally password-encrypt independent full backups as `.rbk` files. **Remember password on this device** defaults off; encrypted schedules require it. Password/schedule reminders explain the choice. Existing plaintext ZIPs remain readable. See [Encryption](docs/ENCRYPTION.md).
+- Select the compatible Odin root service, or explicitly choose standard `su` on an already-rooted device and rerun guided capability/restore checks. Other root backends and devices still need live validation.
 - Select multiple installed user apps for backup, with a ZIP per app and a history of versions. Search for apps one at a time without losing selections, then use **Show selected** to review them together.
-- Include the original signed base APK and installed splits, or back up private data only. Stream selected internal/portable-card Android/data files and whole app OBB folders into each ZIP. Four choices appear in guided setup and Backup preferences; new choices default on and the existing internal-data choice is preserved. Missing/empty folders are omitted. Raven 1.7.4 reads older backups; expanded format-5 backups require 1.7.4 or newer.
+- Include the original signed base APK and installed splits, or back up private data only. Stream selected internal/portable-card Android/data files and whole app OBB folders into each ZIP. Four choices appear in guided setup and Backup preferences; new choices default on and the existing internal-data choice is preserved. Missing/empty folders are omitted. Raven 1.8.0 reads older backups; expanded format-5 backups require 1.7.4 or newer.
 - Choose one local/internal-storage or portable SD folder for both backups and the Restore list. Storage permission is requested only when missing.
 - Handle legitimate newline filenames and recreate private app FIFOs. Allow app-scoped symbolic links to the same app’s primary external files; verify linked files exist in a staged external restore. Other links and device nodes remain blocked.
 - Recognize firmware-declared app-data root label types and map source root labels to the installed destination. Unknown special per-file labels remain blocked.
@@ -22,7 +26,7 @@ Raven Backup is an experimental Android app for backing up user-app private data
 - Export and review/import theme, backup/restore preferences, backup order and schedule choices through **Settings > Settings & configuration**. Imported schedules stay off until reviewed and enabled; folder permissions and device approval are kept on the current device and must be set up again after a wipe.
 - On verified devices, review and restore a backup or queue different apps in selection order. Each restore checks content, ownership, permissions and SELinux labels. Incompatible apps are skipped with reasons in the final report; data/recovery failures stop the queue. Earlier successful restores stay restored. Opening apps afterward defaults to off.
 - Create temporary transaction recovery protection and retain separately tagged per-app recovery ZIPs until deleted through **Settings > Backup preferences > Manage recovery backups**.
-- Delete selected ZIPs after confirmation. **Settings > Advanced > Purge all backups** can empty the chosen backup folder, including non-ZIP files and all subfolders, after confirmation; the selected root folder is kept.
+- Delete selected backup archives after confirmation. **Settings > Advanced > Purge all backups** can empty the chosen backup folder, including non-ZIP files and all subfolders, after confirmation; the selected root folder is kept.
 - Prepare app-size estimates and choose Package ID, App name or Size order, ascending or descending, in Backup preferences. Optional Usage access speeds size estimates; checked file counting remains available.
 - Keep manual backups/restores running with the screen off using an ongoing notification and CPU wake lock, subject to Android background limits. Progress names the current app and its position in the batch.
 - Back up eligible system-app data without APKs. An off-by-default system-app migration option permits app-version or firmware differences after confirmation; the same model, package, ownership and signing identity remain required. Persistent apps that cannot stay stopped, including tested Odin 3 Game Assistant, are refused.
@@ -35,7 +39,7 @@ Raven Backup is an experimental Android app for backing up user-app private data
 
 Android 11/API 30 is the minimum declared version. The demonstrated root backend and live restore were tested on two Odin 2 devices (stock 318 and a stock-318-based fingerprint-spoofed build) with **SELinux Permissive**. Odin 2 Android 13 backups were also restored on an Odin 3 running Android 15/API 35. Enforcing SELinux, other untested devices/firmware, secondary users and most shared-UID apps are not supported. Eligible system-app data has a narrower same-identity restore policy; Game Assistant remains unsupported while running. A similarly named Run as root option on another device is not evidence of compatibility.
 
-Only use backups you trust: ZIPs are unencrypted and not cryptographically authenticated. Android Keystore keys, store entitlement, accounts, runtime grants, external game downloads, ACLs and arbitrary filesystem capabilities are not reproduced by copying private files/APKs. Device, Android-version or firmware differences require a migration warning and explicit confirmation. Archive integrity, app package and version, signing review, destination ownership and supported security-label checks remain required. Real cross-device/OS behavior is app-dependent; successful file verification does not prove game progress or account access. Google Play still checks real account entitlement. See [Usage and limits](docs/USAGE.md).
+Only use backups you trust: plaintext ZIPs are unencrypted and not cryptographically authenticated. Raven 1.8.0 adds optional authenticated encrypted Raven containers; filenames, private temporary work files and private recovery ZIPs are not encrypted by this feature. Android Keystore keys, store entitlement, accounts, runtime grants, external game downloads, ACLs and arbitrary filesystem capabilities are not reproduced by copying private files/APKs. Device, Android-version or firmware differences require a migration warning and explicit confirmation. Archive integrity, app package and version, signing review, destination ownership and supported security-label checks remain required. Real cross-device/OS behavior is app-dependent; successful file verification does not prove game progress or account access. Google Play still checks real account entitlement. See [Usage and limits](docs/USAGE.md).
 
 ## Source and building
 
@@ -44,7 +48,7 @@ The app uses Java and Android framework APIs without a Gradle dependency graph. 
 - `src/`, `res/`, `AndroidManifest.xml`: app source and resources.
 - `build.ps1`: portable app/fixture build script.
 - `tests/`: host checks, Android test helper and disposable fixture source.
-- `releases/v1.7.4/`: the current signed APK and checksum.
+- `releases/v1.8.0/`: the current signed APK and checksum.
 - `docs/`: installation, removal, usage, build and validation notes.
 
 ## License and contributions

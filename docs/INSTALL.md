@@ -1,8 +1,8 @@
-# Installing Raven Backup 1.7.4
+# Installing Raven Backup 1.8.0
 
 ## Before installation
 
-This is a device-specific experimental APK, not a Play Store release. It requires the tested OEM root service to back up private app data. Android's ordinary storage permission alone is insufficient. No generic root backend is included.
+This is a device-specific experimental APK, not a Play Store release. It requires a compatible root backend to back up private app data. The tested backend is the Odin OEM service; an explicit standard-su option is available for already-rooted devices but still needs hardware validation. Android's ordinary storage permission alone is insufficient.
 
 **Fresh-install restore setup is included.** Approval is private to this installation and firmware. After reset, clear-data or reinstall, complete the guided setup again; a plain root test or folder check is insufficient.
 
@@ -10,7 +10,7 @@ For recovery of existing backups on a wiped device, use [Restore after a factory
 
 ## Install on the device
 
-1. Copy `releases/v1.7.4/RavenBackup-1.7.4.apk` to the device and open it in a file manager. Allow installation from that file manager if Android asks.
+1. Copy `releases/v1.8.0/RavenBackup-1.8.0.apk` to the device and open it in a file manager. Allow installation from that file manager if Android asks.
 2. Open Raven Backup. On a fresh installation, the guided setup appears before the main app.
 3. Choose a backup folder and approve Android's folder request. Use a dedicated folder; Purge in the main app empties that folder completely.
 4. Tap **Allow storage access** if needed, enable access on Android's page, then return to Raven.
@@ -21,7 +21,7 @@ For recovery of existing backups on a wiped device, use [Restore after a factory
 
 Restore queues review local/SD ZIP metadata first. Private payloads and installers are fully validated at each app’s turn, while external files are validated during the staging write. No app data is replaced until its required checks pass. Non-seekable inputs and older multi-app ZIPs retain full up-front validation. An unreadable or invalid backup cannot block device setup. Use **Settings > Advanced > Verify backup folder** for an optional full scan. Failed backups are flagged with reasons and can be selected for confirmed deletion.
 
-Raven does not root a device or install a root manager. A working supported OEM root service is required. Android's own folder and storage approvals must still be confirmed by the user. Setup starts on first **open**, not silently in the background at APK installation.
+Raven does not root a device or install a root manager. A working compatible root backend is required; the Odin OEM service remains the demonstrated option. Android's own folder and storage approvals must still be confirmed by the user. Setup starts on first **open**, not silently in the background at APK installation.
 
 Existing verified installations keep their settings and open normally after updating. Use **Settings > Advanced > Rerun Guided Setup** to review or repeat setup. After factory reset, clear-data, lost folder access or loss of firmware approval, the guided flow is required again. Follow [Factory-reset recovery](FACTORY-RESET.md) for restoring existing APK/data backups and recovering interrupted setup.
 
@@ -29,7 +29,7 @@ For scheduled backups, use **Choose apps & schedule**, select daily/weekly and a
 
 ## Updates
 
-Install the new signed APK over the existing package. Normal updates with the same signing certificate preserve Raven's settings and folder grants. There is no need to uninstall first. A differently signed local build cannot replace the distributed APK; see [Building](BUILD.md). Resolve any pending restore before changing builds or clearing data. Raven 1.7.4 opens older backups. New expanded-storage format-5 ZIPs require 1.7.4 or newer; earlier format-4 streamed ZIPs require a compatible streaming build; private newline filenames, app-scoped links and FIFOs require 1.7.2 or newer to restore.
+Install the new signed APK over the existing package. Normal updates with the same signing certificate preserve Raven's settings and folder grants. There is no need to uninstall first. A differently signed local build cannot replace the distributed APK; see [Building](BUILD.md). Resolve any pending restore before changing builds or clearing data. Raven 1.8.0 opens older backups. New expanded-storage format-5 ZIPs require 1.7.4 or newer; earlier format-4 streamed ZIPs require a compatible streaming build; private newline filenames, app-scoped links and FIFOs require 1.7.2 or newer to restore.
 
 ## Settings transfer
 
@@ -41,7 +41,7 @@ With Android platform-tools installed and USB debugging authorized:
 
 ```powershell
 adb devices
-adb -s YOUR_SERIAL install -r .\releases\v1.7.4\RavenBackup-1.7.4.apk
+adb -s YOUR_SERIAL install -r .\releases\v1.8.0\RavenBackup-1.8.0.apk
 ```
 
 Choose the intended device serial explicitly, especially when two devices are attached. Open Raven afterward and follow the same setup steps.
@@ -51,10 +51,10 @@ Choose the intended device serial explicitly, especially when two devices are at
 From the repository root:
 
 ```powershell
-Get-FileHash .\releases\v1.7.4\RavenBackup-1.7.4.apk -Algorithm SHA256
+Get-FileHash .\releases\v1.8.0\RavenBackup-1.8.0.apk -Algorithm SHA256
 ```
 
-Compare the result with `releases/v1.7.4/SHA256SUMS.txt`. A matching checksum detects file changes; it is not a substitute for trusting the source of the download.
+Compare the result with `releases/v1.8.0/SHA256SUMS.txt`. A matching checksum detects file changes; it is not a substitute for trusting the source of the download.
 
 ## Migration and recovery backups
 
@@ -63,3 +63,9 @@ Different device model, Android version or firmware shows the backup source deta
 ## Temporary launcher scripts
 
 With internal-storage access allowed, Raven removes its unchanged completed-job `raven-backup-job-<UUID>.sh` launchers after use and checks for old completed launchers when opened. The script contains a job command, not backup data. Unfinished, modified or orphaned scripts are retained. Backup ZIPs and recovery copies are not removed by this cleanup.
+
+In 1.8.0, Automatic root connection uses only the compatible Odin service. Select Standard superuser explicitly only on an already-rooted device, approve its root-manager request, then run guided checks. Choosing a backend does not root a device or establish restore compatibility.
+
+## Optional encryption and maintenance
+
+In Backup preferences, set a Backup password and enable Encrypt future backups if wanted. Encryption and Remember password default off. Encrypted schedules require Remember password; both password setup and scheduling show reminders. Keep your password separately before resetting or changing devices: it is not included in settings exports. Encrypted `.rbk` archives require Raven 1.8.0 or newer; existing plaintext ZIPs still open. Optional completed-archive verification adds a full read. Optional retention deletes older recognized backups only after the new backup verifies, while preserving recovery, locked and unrecognized files. See [Encryption](ENCRYPTION.md).

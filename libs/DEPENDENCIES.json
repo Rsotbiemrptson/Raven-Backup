@@ -1,0 +1,14 @@
+[
+  {
+    "file": "gson-2.13.2.jar",
+    "sha256": "dd0ce1b55a3ed2080cb70f9c655850cda86c206862310009dcb5e5c95265a5e0",
+    "license": "Apache-2.0",
+    "source": "https://github.com/google/gson/tree/gson-parent-2.13.2"
+  },
+  {
+    "file": "tink-android-1.24.0.jar",
+    "sha256": "86ff5d879d4ac5e827ae3974c90fce1a25e7c2698538af833ed824efbfe4c06e",
+    "license": "Apache-2.0",
+    "source": "https://github.com/tink-crypto/tink-java/tree/v1.24.0"
+  }
+]

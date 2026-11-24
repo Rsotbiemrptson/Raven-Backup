@@ -55,7 +55,7 @@ final class ExternalScopes {
    String source=destination(volume,kind,pkg);File probe=e.job();
    long bytes=ExternalProbe.bytes(e.run(probe,ExternalProbe.command(source,new File(probe,"entries").getPath(),new File(probe,"size").getPath()),false));
    if(bytes<0)continue;total=Math.addExact(total,bytes);if(total>ExternalTar.LIMIT)throw new IOException("Combined external files exceed 512 GiB");
-   parts.put(new JSONObject().put("id","scope-"+parts.length()).put("volume",volume).put("kind",kind));
+   parts.put(new JSONObject().put("id","scope-"+parts.length()).put("volume",volume).put("kind",kind).put("estimatedBytes",bytes));
   }
   if(parts.length()>0&&ExternalData.localFolder(parent).getUsableSpace()<total+64L*1024*1024)throw new IOException("Backup drive needs room for the selected external files");
   return parts;

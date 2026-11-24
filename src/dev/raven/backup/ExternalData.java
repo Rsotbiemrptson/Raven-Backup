@@ -106,6 +106,8 @@ final class ExternalData {
   public void write(byte[] b,int o,int n)throws IOException{bytes=Math.addExact(bytes,n);if(bytes>ExternalTar.LIMIT)throw new IOException("Combined external TAR exceeds 512 GiB");out.write(b,o,n);}
  }
  static void writeScopes(BackupEngine engine,File job,String pkg,JSONArray scopes,ZipOutputStream zip)throws Exception {
+  long estimate=0;for(int i=0;i<scopes.length();i++)estimate=Math.addExact(estimate,scopes.getJSONObject(i).optLong("estimatedBytes",0));
+  TransferProgress.phase("Streaming external app data and OBB files",estimate>0?estimate:-1);
   ExternalScopes.validate(scopes);zip.putNextEntry(new ZipEntry(ENTRY));
   java.security.MessageDigest digest=java.security.MessageDigest.getInstance("SHA-256");
   Counted count=new Counted(new java.security.DigestOutputStream(new BufferedOutputStream(zip,65536),digest));
@@ -127,7 +129,7 @@ final class ExternalData {
  static void stageScopes(BackupEngine engine,LiveRestore.Plan plan,JSONObject external,java.util.Map<String,java.nio.file.Path> routes)throws Exception{
   IndexedArchive.unchanged(engine,plan);
   if(plan.sourceStamp!=null){IndexedArchive.stageScopes(engine,plan,external,routes);return;}
-  try(InputStream raw=engine.c.getContentResolver().openInputStream(plan.source);ZipInputStream zip=new ZipInputStream(new BufferedInputStream(raw,65536))){ZipEntry entry;while((entry=zip.getNextEntry())!=null)if(entry.getName().equals(ENTRY)){ExternalTar.readScopes(zip,external.getLong("bytes"),external.getString("sha256"),routes);zip.closeEntry();IndexedArchive.unchanged(engine,plan);return;}}
+  try(InputStream raw=engine.archiveStream(plan.source);ZipInputStream zip=new ZipInputStream(new BufferedInputStream(raw,65536))){ZipEntry entry;while((entry=zip.getNextEntry())!=null)if(entry.getName().equals(ENTRY)){ExternalTar.readScopes(zip,external.getLong("bytes"),external.getString("sha256"),routes);zip.closeEntry();IndexedArchive.unchanged(engine,plan);return;}}
   throw new IOException("External data entry missing");
  }
  static File localFolder(Uri parent)throws IOException {
@@ -148,6 +150,7 @@ final class ExternalData {
  }
  static void stage(BackupEngine engine,LiveRestore.Plan plan,JSONObject transaction)throws Exception {
   JSONObject external=metadata(plan.manifest);
+  TransferProgress.phase("Validating and staging external app data",external.getLong("bytes"));
   if(transaction.has("parts")){
    try{java.util.Map<String,java.nio.file.Path> routes=ExternalScopes.stages(engine,transaction,true);stageScopes(engine,plan,external,routes);return;}catch(Exception failure){try{cleanup(engine,transaction);}catch(Exception cleanup){failure.addSuppressed(cleanup);}throw failure;}
   }
@@ -162,7 +165,7 @@ final class ExternalData {
   if(!stage.mkdir())throw new IOException("Cannot create external staging folder");
   try{
    if(plan.sourceStamp!=null){IndexedArchive.stage(engine,plan,external,stage);return;}
-   try(InputStream raw=engine.c.getContentResolver().openInputStream(plan.source)){
+   try(InputStream raw=engine.archiveStream(plan.source)){
     if(raw==null)throw new IOException("Cannot reopen external backup");
     try(ZipInputStream zip=new ZipInputStream(new BufferedInputStream(raw,65536))){
      ZipEntry entry;

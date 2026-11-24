@@ -63,6 +63,12 @@ try {
   if (!$env:RAVEN_KEY_PASS) { $env:RAVEN_KEY_PASS = $env:RAVEN_STORE_PASS }
  }
  $isApp = $Target -eq 'app'; $isSplit = $Target -eq 'generic-split'
+ $libraries = @()
+ if ($isApp) {
+  $dependencies=Get-Content -LiteralPath (Join-Path $project 'libs/DEPENDENCIES.json') -Raw | ConvertFrom-Json
+  foreach($dependency in $dependencies){$path=Join-Path $project ('libs/'+$dependency.file);if((Get-FileHash -LiteralPath $path).Hash -ne $dependency.sha256){throw ('Dependency checksum mismatch: '+$dependency.file)};$libraries+=@($path)}
+ }
+
  if ($isApp) {
   # Build the disposable setup app with this build's signing identity, including local builds.
   $helperOutput = Join-Path $build 'helper'
@@ -75,7 +81,7 @@ try {
  $manifest = if ($isApp) { Join-Path $project 'AndroidManifest.xml' } else { Join-Path $project "tests/device/fixtures/$Target/AndroidManifest.xml" }
  if (!$isSplit) {
   $sources = if ($isApp) { @(Get-ChildItem -LiteralPath (Join-Path $project 'src') -Recurse -Filter *.java | ForEach-Object FullName) } else { @(Join-Path $project 'tests/device/fixtures/Seed.java') }
-  $compileArguments = @('-encoding','UTF-8','-source','8','-target','8','-classpath',$platform,'-d',(Join-Path $build 'classes')) + $sources
+  $compileArguments = @('-encoding','UTF-8','-source','8','-target','8','-classpath',($platform+$(if($libraries.Count){';'+($libraries -join ';')}else{''})),'-d',(Join-Path $build 'classes')) + $sources
   Invoke-RavenTool -Program (Join-Path $javaBin 'javac.exe') -ToolArguments $compileArguments
  }
  $unsigned = Join-Path $build 'unsigned.apk'
@@ -85,9 +91,9 @@ try {
  if (!$isSplit) {
   $classesJar = Join-Path $build 'classes.jar'
   Invoke-RavenTool -Program (Join-Path $javaBin 'jar.exe') -ToolArguments @('cf',$classesJar,'-C',(Join-Path $build 'classes'),'.')
-  Invoke-RavenTool -Program (Join-Path $tools 'd8.bat') -ToolArguments @('--min-api','30','--lib',$platform,'--output',(Join-Path $build 'dex'),$classesJar)
+  Invoke-RavenTool -Program (Join-Path $tools 'd8.bat') -ToolArguments (@('--min-api','30','--lib',$platform,'--output',(Join-Path $build 'dex'),$classesJar)+$libraries)
   Push-Location (Join-Path $build 'dex')
-  try { Invoke-RavenTool -Program (Join-Path $tools 'aapt.exe') -ToolArguments @('add',$unsigned,'classes.dex') } finally { Pop-Location }
+  try { foreach($dex in Get-ChildItem -Filter '*.dex'){Invoke-RavenTool -Program (Join-Path $tools 'aapt.exe') -ToolArguments @('add',$unsigned,$dex.Name)} } finally { Pop-Location }
  }
  $aligned = Join-Path $build 'aligned.apk'
  Invoke-RavenTool -Program (Join-Path $tools 'zipalign.exe') -ToolArguments @('-f','4',$unsigned,$aligned)

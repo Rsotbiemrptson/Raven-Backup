@@ -18,7 +18,7 @@ In **Backup**, search/filter installed user apps, select one or several, then ch
 
 After a fresh install or reset, complete the guided setup before entering the main app; see [Installation](INSTALL.md). Once verification passes, choose **Review & restore** for a single backup, or select multiple backups and **Restore selected**. Use only one version per app in a queue. Queue order is selection order; Select all follows displayed catalog order. A legacy multi-app ZIP restores every app listed in that queue's review, so check the names carefully.
 
-**Import ZIP** opens one Raven ZIP from another location for review and restore. It does not copy it into the selected folder. The file picker alone does not start restoring; review and confirmation still apply.
+**Import backup** opens a Raven ZIP or encrypted `.rbk` archive from another location for review and restore. It does not copy it into the selected folder. The file picker alone does not start restoring; review and confirmation still apply.
 
 For seekable local/SD archives, a queue checks metadata before confirmation, then fully validates private data/installers at each app’s turn. External files are checked while writing temporary staging, before replacement. Non-seekable inputs and older multi-app ZIPs keep full up-front validation. Metadata failures appear in a review popup; private payload/installer failures found later are skipped with a reason. External staging/data failures stop the queue. Failed archives are flagged and require a separate confirmation for deletion. Failed checks remain visible until the file changes or a new full validation passes. The queue installs missing apps from full backups and restores archives one at a time. Installed package IDs must match. Restore preferences can allow different signatures, different versions, or both. These switches default to off. Raven restores data into the installed copy and keeps its APK when the required settings are enabled. Known installer incompatibilities, missing installers and blocked identity mismatches are skipped before data replacement; the final report names each restored, skipped, failed or not-run app and gives reasons. Unknown errors, data-replacement failures and pending recovery stop the remaining queue; previously completed restores stay restored. Temporary recovery protects each individual data replacement; it is not an atomic rollback of the whole queue and does not undo APK installation. Open-after defaults to off. If explicitly enabled, it opens only successfully restored apps after a queue finishes without a safety stop. Generic launch success does not prove every account, save or app feature works.
 
@@ -36,7 +36,7 @@ A matching mounted card UUID is preferred. If it is absent and exactly one writa
 
 ## Delete and Purge
 
-**Delete selected** permanently deletes only reviewed ZIPs selected in Restore. **Purge all backups**, in Settings > Advanced, reviews all descendants of the selected folder and then asks to empty it. It includes ZIPs, non-ZIP files, hidden files, unfinished files and nested/empty subfolders. The selected folder itself is kept. Changed contents require review again; a storage failure after deletion begins may leave a partial purge. Purge targets the shared backup folder. Delete selected targets the reviewed ZIPs in that folder or managed recovery storage. Neither operation deletes installed app data. There is no recycle bin in this workflow.
+**Delete selected** permanently deletes only reviewed backup archives selected in Restore. **Purge all backups**, in Settings > Advanced, reviews all descendants of the selected folder and then asks to empty it. It includes ZIPs, non-ZIP files, hidden files, unfinished files and nested/empty subfolders. The selected folder itself is kept. Changed contents require review again; a storage failure after deletion begins may leave a partial purge. Purge targets the shared backup folder. Delete selected targets the reviewed archives in that folder or managed recovery storage. Neither operation deletes installed app data. There is no recycle bin in this workflow.
 
 ## Store attribution
 
@@ -48,11 +48,11 @@ Google Play/original-store links are restored only when the store is present wit
 
 Device and firmware differences require migration confirmation. See [Migration](MIGRATION.md) and [Recovery backups](RECOVERY.md).
 
-- Only the observed Odin OEM root protocol is implemented; no generic su/Magisk backend.
+- Automatic root selection uses the compatible Odin OEM protocol. Standard su is an explicit option for already-rooted devices and remains unverified on other hardware.
 - User 0 and eligible app identities only; user-app migration requires explicit confirmation. Eligible system apps are data-only and retain same-model/identity/ownership/signature checks; a separate opt-in and warning permit version or firmware differences.
 - Live metadata checks were demonstrated with SELinux Permissive. Enforcing/cross-firmware restore is unverified; Raven does not change enforcement.
 - No Android Keystore export, account recovery, runtime-permission restoration, store-entitlement transfer, game downloads outside the supported external app files directory, or general ACL/capability preservation.
-- ZIPs are unencrypted and unauthenticated. Imported data and scripts require trust.
+- Plain ZIPs are unencrypted and unauthenticated. Optional password-encrypted `.rbk` output requires 1.8.0+. Private recovery ZIPs and temporary work files remain unencrypted. Imported data and scripts require trust.
 - Backups force-stop apps; schedules can interrupt an app in use unless charging/idle conditions are chosen. Android may delay jobs. First unlock after reboot is required.
 - Local storage and a portable SD provider with read/write/rename/sync support were tested; cloud-document providers are not established as compatible.
 - Clearing data/uninstalling/resetting loses approval. Complete the guided setup again. Keystore-bound data, accounts, runtime grants and store entitlement still require their own recovery.
@@ -140,3 +140,7 @@ Private TAR validation accepts symbolic links only with an explicit app identity
 Private named pipes (FIFOs) are recreated as empty IPC endpoints with checked owner/mode/label metadata. Raven never reads or hashes a FIFO as file contents. Payload-bearing FIFOs, device nodes and unsupported special files remain refused. Connections and in-flight pipe data cannot be backed up. External TARs continue to accept only ordinary files/directories.
 
 The bundled setup helper uses a no-display activity and finishes without creating a visible window. This removes its window transitions; it does not establish the cause of any separate display artifact.
+
+## Backup safeguards
+
+Backup preferences adds optional encryption/password controls, full completed-backup verification and newest-N retention (all off by default). Retention verifies the new archive fully before removing older recognized versions for the same app and never prunes recovery or unreadable/locked archives. Review Restore for the last-verified date. Root connection selection is in Advanced and guided setup; standard superuser requires an already-rooted device. Restore review lists replaced private/external folders and conservative free-space estimates. Mapping and space are checked again before replacement. Progress reports stage, bytes, speed and approximate stage time where a size is known. These are estimates, not guaranteed completion times. See [Encryption](ENCRYPTION.md) for passwords and unattended schedules.

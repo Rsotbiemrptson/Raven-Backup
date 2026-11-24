@@ -8,6 +8,7 @@ final class BackupSchedule {
  static void enable(Context c,List<String> packages,Uri tree,int days,boolean charging,boolean idle)throws Exception {
   if(days!=1&&days!=7)throw new IOException("Choose a daily or weekly schedule");
   if(packages.isEmpty()||tree==null)throw new IOException("Choose apps and a backup folder first");if(!Environment.isExternalStorageManager())throw new IOException("Allow internal-storage before scheduling");
+  if(RestorePreferences.prefs(c).getBoolean(ArchiveVerifier.ENCRYPT,false)){if(!PasswordVault.remembered(c))throw new IOException("Encrypted schedules need Remember password enabled");char[] password=PasswordVault.saved(c);try{BackupCrypto.password(password);}finally{if(password!=null)Arrays.fill(password,'\0');}}
   BackupEngine engine=new BackupEngine(c);for(String pkg:packages)engine.info(pkg);
   JSONObject config=new JSONObject().put("packages",new JSONArray(new TreeSet<>(packages))).put("tree",tree.toString()).put("days",days).put("charging",charging).put("idle",idle);
   if(!prefs(c).edit().putString("config",config.toString()).putBoolean("enabled",true).commit())throw new IOException("Cannot save schedule");

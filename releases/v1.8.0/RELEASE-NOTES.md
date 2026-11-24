@@ -1,0 +1,15 @@
+Raven Backup 1.8.0 is the latest regular release for the tested Odin OEM root backend.
+
+- Optional password-encrypted `.rbk` backups stream directly to storage and decrypt on demand during restore. Existing plaintext ZIPs remain readable. Encryption and Remember password on this device both default off.
+- Password setup and scheduling explain remembered passwords. Encrypted scheduled backups require a saved password and never silently fall back to plaintext. Keep the original password separately: it is needed after reset or on another device and is not exported with settings.
+- Optional full verification shows a last-verified date. Optional retention keeps the newest chosen number per app only after the new backup verifies; recovery, locked and unrecognized archives are preserved.
+- Progress reports stages, app position, processed bytes, rate and approximate time where size is known. Restore review lists replaced folders and conservative staging/recovery space; mapping and space are checked again before replacement.
+- Explicit standard-su support is available for already-rooted devices, with guided tool/restore checks. Odin OEM automatic mode remains the demonstrated backend. Standard su and other manufacturers have not been accepted on real hardware.
+
+Install this APK over the existing same-signed Raven Backup app to retain settings and folder grants. Wait for active backups/restores to finish before updating. After a reset, select the backup folder, allow required storage access, review contents, optionally allow app-size access or skip it, press Run checks and wait for Checks passed. Enter the original password to restore encrypted backups. Import settings afterward if wanted; imported schedules remain off until reviewed.
+
+All six exact-APK Odin 3 suites passed, including controlled rollback, reinstall/fresh UID, large encrypted/plaintext streaming round trips, four storage scopes, older formats, corruption/path/mapping/space refusal, retention protection, an unforced encrypted Android job and both password reminders. Thirteen host suites and three settings/storage suites passed. Large fixtures validate size and integrity, not a 150 GB game-library speed benchmark.
+
+Limits: encrypted files require Raven 1.8.0+ and their original password. Filenames, private temporary files and private recovery ZIPs are not encrypted by this feature. No password recovery is available. Keystore secrets, accounts and licenses do not transfer. Enforcing SELinux, other manufacturers and the new su backend remain unverified. Arbitrary game libraries and incremental backup chains are outside this release.
+
+[Installation](https://github.com/Rsotbiemrptson/Raven-Backup/blob/v1.8.0/docs/INSTALL.md) · [Encryption and schedules](https://github.com/Rsotbiemrptson/Raven-Backup/blob/v1.8.0/docs/ENCRYPTION.md) · [Factory-reset recovery](https://github.com/Rsotbiemrptson/Raven-Backup/blob/v1.8.0/docs/FACTORY-RESET.md) · [Testing](https://github.com/Rsotbiemrptson/Raven-Backup/blob/v1.8.0/docs/TESTING.md)

@@ -3,40 +3,41 @@ import android.net.Uri;import android.os.ParcelFileDescriptor;import android.sys
 /** Review a seekable ZIP without reading its large external entry. Restore verifies that entry while staging. */
 final class IndexedArchive {
  static final class Stamp {
-  final long device,inode,bytes,modified;
-  Stamp(StructStat s){device=s.st_dev;inode=s.st_ino;bytes=s.st_size;modified=s.st_mtime;}
-  boolean matches(StructStat s){return device==s.st_dev&&inode==s.st_ino&&bytes==s.st_size&&modified==s.st_mtime;}
+  // exFAT rename ctime can be rounded on writeback without changing content; use inode, size and precise mtime.
+  final long device,inode,bytes,modified,modifiedNanos;
+  Stamp(StructStat s){device=s.st_dev;inode=s.st_ino;bytes=s.st_size;modified=s.st_mtime;modifiedNanos=s.st_mtim.tv_nsec;}
+  boolean matches(StructStat s){return device==s.st_dev&&inode==s.st_ino&&bytes==s.st_size&&modified==s.st_mtime&&modifiedNanos==s.st_mtim.tv_nsec;}
  }
  static final class Result{JSONObject manifest;Stamp stamp;String headerIdentity;boolean metadataOnly;}
  static void unchanged(BackupEngine e,LiveRestore.Plan plan)throws Exception{
   if(plan.sourceStamp==null)return;
   try(ParcelFileDescriptor fd=e.c.getContentResolver().openFileDescriptor(plan.source,"r")){if(fd==null||!plan.sourceStamp.matches(Os.fstat(fd.getFileDescriptor())))throw new IOException("Backup changed after review. Review it again.");}
  }
- static long extract(ZipFile zip,ZipEntry entry,OutputStream out,long cap)throws Exception{
+ static long extract(SeekableZip zip,ZipEntry entry,OutputStream out,long cap)throws Exception{
   if(entry.getSize()<0||entry.getSize()>cap||entry.getCrc()<0)throw new IOException("Invalid or oversized ZIP entry: "+entry.getName());
   CRC32 crc=new CRC32();long bytes;try(InputStream in=new CheckedInputStream(zip.getInputStream(entry),crc)){bytes=BackupEngine.copy(in,out,Math.min(cap,entry.getSize()));}
   if(bytes!=entry.getSize()||crc.getValue()!=entry.getCrc())throw new IOException("ZIP entry checksum mismatch: "+entry.getName());return bytes;
  }
  static void stage(BackupEngine e,LiveRestore.Plan plan,JSONObject external,File stage)throws Exception{
-  try(ParcelFileDescriptor fd=e.c.getContentResolver().openFileDescriptor(plan.source,"r")){
-   if(fd==null||!plan.sourceStamp.matches(Os.fstat(fd.getFileDescriptor())))throw new IOException("Backup changed after review");
-   try(ZipFile zip=new ZipFile("/proc/self/fd/"+fd.getFd())){
+  try(ArchiveAccess.Handle access=e.openArchive(plan.source)){ParcelFileDescriptor fd=access.fd;
+   if(!plan.sourceStamp.matches(access.physical))throw new IOException("Backup changed after review");
+   try(SeekableZip zip=new SeekableZip(new ParcelFileDescriptor.AutoCloseInputStream(ParcelFileDescriptor.dup(fd.getFileDescriptor())).getChannel())){
     ZipEntry entry=zip.getEntry(ExternalData.ENTRY);if(entry==null||entry.getSize()!=external.getLong("bytes")||entry.getCrc()<0)throw new IOException("External ZIP entry changed");
     CRC32 crc=new CRC32();try(InputStream in=new CheckedInputStream(zip.getInputStream(entry),crc)){ExternalData.read(in,external,stage);}
     if(crc.getValue()!=entry.getCrc())throw new ExternalTar.InvalidData("External ZIP entry checksum mismatch");
    }
-   if(!plan.sourceStamp.matches(Os.fstat(fd.getFileDescriptor())))throw new IOException("Backup changed during restore staging");
+   if(!plan.sourceStamp.matches(ArchiveAccess.stat(e.c,plan.source)))throw new IOException("Backup changed during restore staging");
   }
  }
  static void checksum(String value)throws Exception{if(!value.matches("[a-f0-9]{64}"))throw new IOException("Invalid payload checksum");}
  static void stageScopes(BackupEngine e,LiveRestore.Plan plan,JSONObject external,Map<String,java.nio.file.Path> routes)throws Exception{
-  try(ParcelFileDescriptor fd=e.c.getContentResolver().openFileDescriptor(plan.source,"r")){
-   if(fd==null||!plan.sourceStamp.matches(Os.fstat(fd.getFileDescriptor())))throw new IOException("Backup changed after review");
-   try(ZipFile zip=new ZipFile("/proc/self/fd/"+fd.getFd())){
+  try(ArchiveAccess.Handle access=e.openArchive(plan.source)){ParcelFileDescriptor fd=access.fd;
+   if(!plan.sourceStamp.matches(access.physical))throw new IOException("Backup changed after review");
+   try(SeekableZip zip=new SeekableZip(new ParcelFileDescriptor.AutoCloseInputStream(ParcelFileDescriptor.dup(fd.getFileDescriptor())).getChannel())){
     ZipEntry entry=zip.getEntry(ExternalData.ENTRY);if(entry==null||entry.getSize()!=external.getLong("bytes")||entry.getCrc()<0)throw new IOException("External data index changed");
     CRC32 crc=new CRC32();try(InputStream in=new CheckedInputStream(zip.getInputStream(entry),crc)){ExternalTar.readScopes(in,external.getLong("bytes"),external.getString("sha256"),routes);}
     if(crc.getValue()!=entry.getCrc())throw new ExternalTar.InvalidData("External ZIP checksum mismatch");
-   }if(!plan.sourceStamp.matches(Os.fstat(fd.getFileDescriptor())))throw new IOException("Backup changed while staging");
+   }if(!plan.sourceStamp.matches(ArchiveAccess.stat(e.c,plan.source)))throw new IOException("Backup changed while staging");
   }
  }
  static void part(Map<String,ZipEntry> entries,Set<String> expected,String name,long bytes)throws Exception{ZipEntry entry=entries.get(name);if(entry==null||bytes<1||entry.getSize()!=bytes||!expected.add(name))throw new IOException("Missing/invalid payload entry: "+name);}
@@ -51,14 +52,14 @@ final class IndexedArchive {
   if(total>BackupEngine.MAX)throw new IOException("Private payloads/installers exceed size limit");if(ExternalData.streamed(format)){if(footer==null)throw new IOException("External checksum footer missing");m.put("external",footer);expected.add(ExternalData.FOOTER);}JSONObject external=ExternalData.metadata(m);if(external!=null)part(entries,expected,ExternalData.ENTRY,external.getLong("bytes"));if(!expected.equals(entries.keySet()))throw new IOException("ZIP contents differ from manifest");return m;
  }
  static Result read(BackupEngine e,Uri source,File job,boolean metadataOnly)throws Exception{
-  ParcelFileDescriptor opened;
-  try{opened=e.c.getContentResolver().openFileDescriptor(source,"r");}catch(FileNotFoundException unsupported){return null;}
+  ArchiveAccess.Handle opened;
+  try{opened=e.openArchive(source);}catch(FileNotFoundException unsupported){return null;}
   if(opened==null)return null;
-  try(ParcelFileDescriptor fd=opened){
-   StructStat stat=Os.fstat(fd.getFileDescriptor());if((stat.st_mode&0170000)!=0100000)return null;
+  try(ArchiveAccess.Handle access=opened){ParcelFileDescriptor fd=access.fd;
+   StructStat stat=access.physical;if((stat.st_mode&0170000)!=0100000)return null;
    try{Os.lseek(fd.getFileDescriptor(),0,OsConstants.SEEK_SET);}catch(ErrnoException notSeekable){return null;}
    Stamp stamp=new Stamp(stat);
-   try(ZipFile zip=new ZipFile("/proc/self/fd/"+fd.getFd())){
+   try(SeekableZip zip=new SeekableZip(new ParcelFileDescriptor.AutoCloseInputStream(ParcelFileDescriptor.dup(fd.getFileDescriptor())).getChannel())){
     LinkedHashMap<String,ZipEntry> entries=new LinkedHashMap<>();Enumeration<? extends ZipEntry> iterator=zip.entries();
     while(iterator.hasMoreElements()){ZipEntry entry=iterator.nextElement();String name=entry.getName();if(entries.isEmpty()&&!name.equals("manifest.json"))throw new IOException("Backup manifest must be first");
      if(entry.isDirectory()||!name.matches("manifest\\.json|app[0-9]+-(ce|de)\\.(tar|labels)|app[0-9]+-apk[0-9]+\\.apk|external-data\\.(tar|json)")||entries.put(name,entry)!=null||entries.size()>10240)throw new IOException("Unexpected/duplicate ZIP entry");
@@ -73,7 +74,7 @@ final class IndexedArchive {
     JSONObject inspection=new JSONObject(manifest.toString());if(footer!=null)inspection.put("external",footer);JSONObject external=ExternalData.metadata(inspection);
     if(external!=null){ZipEntry entry=entries.get(ExternalData.ENTRY);if(entry==null||entry.getSize()!=external.getLong("bytes"))throw new IOException("External payload size differs from metadata");}
     Result result=new Result();result.manifest=metadataOnly?inspect(manifest,footer,entries):e.validateImported(job,new HashSet<>(entries.keySet()),footer);result.stamp=stamp;result.metadataOnly=metadataOnly;result.headerIdentity=BackupEngine.hash(new File(job,"manifest.json"))+(footer==null?"":BackupEngine.hash(new File(job,ExternalData.FOOTER)));
-    if(!stamp.matches(Os.fstat(fd.getFileDescriptor())))throw new IOException("Backup changed during review");return result;
+    if(!stamp.matches(ArchiveAccess.stat(e.c,source)))throw new IOException("Backup changed during review");return result;
    }
   }
  }

@@ -19,6 +19,7 @@ final class SetupCheck {
   if(installed(engine))throw new IOException("Raven Restore Check is already installed. If a previous setup was interrupted, recover any pending restore, then uninstall Raven Restore Check and retry. No existing app was changed.");
   if(!context.getSharedPreferences("live-restore",0).edit().remove("general-verified").commit())throw new IOException("Could not reset verification before checking.");
   StringBuilder evidence=new StringBuilder(engine.probe()).append("\nFirmware: ").append(Build.FINGERPRINT).append("\nSELinux: ").append(RootBridge.call("getenforce").trim()).append("\n");
+  progress.update("Checking root tools and file operations…");evidence.append(RootCapabilities.check(engine));
   File job=engine.job(),apk=new File(job,"setup.apk"),zip=new File(job,"original.zip");boolean ownInstalled=false;live.testing=true;live.keepRollback=false;live.launchAfter=false;
   try{
    try(InputStream in=context.getAssets().open("restore-check.apk");OutputStream out=new FileOutputStream(apk)){BackupEngine.copy(in,out,16*1024*1024);}

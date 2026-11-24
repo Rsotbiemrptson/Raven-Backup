@@ -1,6 +1,6 @@
 # Restore after a factory reset
 
-These steps apply to Raven Backup 1.7.2 on a compatible Odin 2 or Odin 3. A factory reset removes Raven's settings, folder permissions and live-restore approval. Install Raven and run setup again before restoring.
+These steps apply to Raven Backup 1.8.0 on a compatible Odin 2 or Odin 3. A factory reset removes Raven's settings, folder permissions and live-restore approval. Install Raven and run setup again before restoring.
 
 ## Before resetting
 
@@ -12,7 +12,7 @@ These steps apply to Raven Backup 1.7.2 on a compatible Odin 2 or Odin 3. A fact
 ## Set up Raven on the wiped device
 
 1. Complete Android setup and unlock the primary device user. Copy your backup folder back to the device, or connect the storage containing it. Keep the separate backup copy until recovery is complete.
-2. Install **RavenBackup-1.7.2.apk** and open Raven. First launch shows **Raven Backup setup** before the main app. Allow APK installation from your file manager if Android asks. ADB is optional.
+2. Install **RavenBackup-1.8.0.apk** and open Raven. First launch shows **Raven Backup setup** before the main app. Allow APK installation from your file manager if Android asks. ADB is optional.
 3. Tap **Choose backup folder**. Select your existing backups or a dedicated folder and approve Android's folder-access confirmation. The picker starts in Documents; use its navigation to select an SD card or another location if needed.
 4. Tap **Allow storage access** if needed. Enable access for Raven Backup on Android's all-files access page, then go back. Android requires the user to approve these prompts; Raven cannot grant them automatically.
 5. Optionally allow **App sizes** access, or choose **Skip for now** to use checked file counting. Then press **Run checks**. A themed **Testing…** popup shows progress while Raven tests root, folder read/write/rename/delete access, then installs its bundled **Raven Restore Check** helper to verify backup, controlled failure/rollback, saved-APK reinstall, changed app ownership, permission modes, security labels and app reads. The helper runs with its diagnostic screen hidden. Keep the device unlocked; your other apps and backup ZIPs are not changed by this check.
@@ -42,3 +42,5 @@ The tested environments were stock Odin 2 firmware 1.0.0.318 and its documented 
 Android Keystore-bound secrets, accounts, runtime permission grants and external game downloads are not restored by copying app files. Some apps will therefore require their own recovery or sign-in even when their saved files are present. See [Usage and limits](USAGE.md) and [Removal and cleanup](UNINSTALL.md).
 
 On a fresh device, review the four Backup contents choices in guided setup before Run checks. Keep removable cards mounted throughout backup/restore. A matching card UUID is preferred; the sole available writable portable card can be used when the original UUID is absent. Ambiguous mappings are refused. Restoring Android store attribution does not replace Play sign-in or entitlement checks.
+
+Encrypted `.rbk` backups (1.8.0+) need their original password after any reset; Remember password is device-local and is lost. Keep the password separately before wiping. Reinstall Raven 1.8.0 or newer, select the backup folder, rerun guided checks and enter the archive password during restore review. Store sign-in/entitlement and Android Keystore limitations still apply.

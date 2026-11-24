@@ -23,6 +23,7 @@ public final class OperationService extends Service {
 
  static synchronized void begin(Context context,String heading,Runnable work,Consumer<String> failure){
   if(running)throw new IllegalStateException("A Raven operation is already running");
+  TransferProgress.start(heading);
   title=heading;pending=work;startupFailure=failure;running=true;
   try{
    if(context.startForegroundService(new Intent(context,OperationService.class))==null)
@@ -59,8 +60,9 @@ public final class OperationService extends Service {
    wakeLock=((PowerManager)getSystemService(POWER_SERVICE)).newWakeLock(
     PowerManager.PARTIAL_WAKE_LOCK,getPackageName()+":backup-operation");
    wakeLock.acquire();
-   active=this;
+   active=this;new Handler(getMainLooper()).post(new Runnable(){public void run(){if(active!=OperationService.this||!running)return;String detail=TransferProgress.detail();if(detail!=null)progress(title,detail);new Handler(getMainLooper()).postDelayed(this,1000);}});
    worker=new Thread(()->{
+    TransferProgress.attach();
     try{task.run();}
     finally{new Handler(getMainLooper()).post(()->finishOperation());}
    },"Raven backup operation");
@@ -73,7 +75,7 @@ public final class OperationService extends Service {
   }
   return START_NOT_STICKY;
  }
- private void finishOperation(){
+ private void finishOperation(){TransferProgress.stop();
   if(wakeLock!=null&&wakeLock.isHeld())wakeLock.release();
   stopForeground(STOP_FOREGROUND_REMOVE);
   if(result!=null)getSystemService(NotificationManager.class).notify(NOTIFICATION,

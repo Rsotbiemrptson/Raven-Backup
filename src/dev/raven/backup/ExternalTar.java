@@ -37,7 +37,7 @@ final class ExternalTar {
  private static Result scan(InputStream input,long limit,Path stage,OutputStream copy)throws Exception {return scan(input,limit,stage,copy,null,null);}
  private static Result scan(InputStream input,long limit,Path stage,OutputStream copy,String prefix,Map<String,Path> routes)throws Exception {
   MessageDigest digest=MessageDigest.getInstance("SHA-256");
-  InputStream checked=new DigestInputStream(input,digest);
+  InputStream checked=new DigestInputStream(TransferProgress.counted(input),digest);
   if(copy!=null&&prefix==null)checked=new FilterInputStream(checked){
    @Override public int read()throws IOException{int value=in.read();if(value!=-1)copy.write(value);return value;}
    @Override public int read(byte[] b,int offset,int length)throws IOException{int n=in.read(b,offset,length);if(n>0)copy.write(b,offset,n);return n;}
@@ -74,9 +74,9 @@ final class ExternalTar {
     Path target=stage==null?null:stage.resolve(path).normalize();
     if(target!=null&&!target.startsWith(stage))throw new InvalidData("External archive path escapes staging");
     if(routes!=null&&!path.isEmpty()){
-     String[] parts=path.split("/",2);Path base=routes.get(parts[0]);if(base==null)throw new InvalidData("Unknown external scope in archive");
+     String[] parts=path.split("/",2);Path base=routes.get(parts[0]);if(!routes.containsKey(parts[0]))throw new InvalidData("Unknown external scope in archive");
      if(parts.length==1&&!directory)throw new InvalidData("External scope root must be a directory");
-     target=parts.length==1?base:base.resolve(parts[1]).normalize();if(!target.startsWith(base))throw new InvalidData("External scope escape");
+     if(base!=null){target=parts.length==1?base:base.resolve(parts[1]).normalize();if(!target.startsWith(base))throw new InvalidData("External scope escape");}
     }
     if(prefix!=null)ScopedTar.header(copy,prefix+(path.isEmpty()?"":"/"+path),directory,size);
     if(directory){if(target!=null)Files.createDirectories(target);}

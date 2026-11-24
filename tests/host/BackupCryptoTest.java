@@ -1,0 +1,17 @@
+package dev.raven.backup;
+import java.io.*;import java.nio.*;import java.nio.channels.*;import java.nio.file.*;import java.util.*;
+public final class BackupCryptoTest {
+ interface Checked{void run()throws Exception;}
+ static void require(boolean b,String m){if(!b)throw new AssertionError(m);}
+ static void reject(Checked c)throws Exception{try{c.run();}catch(Exception expected){return;}throw new AssertionError("Invalid ciphertext accepted");}
+ static char[] password="Raven-test-🔑-password".toCharArray();
+ static void round(byte[] plain,Path path)throws Exception{try(OutputStream out=BackupCrypto.encrypt(Files.newOutputStream(path),password)){out.write(plain);}try(BackupCrypto.Reader reader=new BackupCrypto.Reader(FileChannel.open(path),password)){require(reader.size==plain.length,"size");Random random=new Random(2);for(int n=0;n<130;n++){int start=random.nextInt(plain.length-4096);ByteBuffer bytes=ByteBuffer.allocate(4096);require(reader.read(start,bytes)==4096,"seek length");require(Arrays.equals(bytes.array(),Arrays.copyOfRange(plain,start,start+4096)),"random seek content");}reader.verifyAll();ByteBuffer end=ByteBuffer.allocate(8);require(reader.read(reader.size,end)==-1,"EOF");}}
+ public static void main(String[] args)throws Exception{Path path=Paths.get("work/crypto.rbk");byte[] data=new byte[6*1024*1024+71];new Random(23).nextBytes(data);data[0]='P';data[1]='K';data[2]=3;data[3]=4;round(data,path);byte[] ciphertext=Files.readAllBytes(path);reject(()->new BackupCrypto.Reader(FileChannel.open(path),"wrong-pass".toCharArray()));
+ for(int index:new int[]{8,24,31,100,BackupCrypto.HEADER+3*BackupCrypto.SEGMENT+113,ciphertext.length-1}){byte[] bad=ciphertext.clone();bad[index]^=1;Path altered=Paths.get("work/bad.rbk");Files.write(altered,bad);reject(()->{try(BackupCrypto.Reader r=new BackupCrypto.Reader(FileChannel.open(altered),password)){r.verifyAll();}});}
+ for(int length:new int[]{3,31,32,100,ciphertext.length-1,ciphertext.length-1000000}){Path altered=Paths.get("work/truncated.rbk");Files.write(altered,Arrays.copyOf(ciphertext,length));reject(()->{try(BackupCrypto.Reader r=new BackupCrypto.Reader(FileChannel.open(altered),password)){r.verifyAll();}});}
+ reject(()->BackupCrypto.encrypt(new ByteArrayOutputStream(),"short".toCharArray()));round(data,Paths.get("work/second.rbk"));require(!Arrays.equals(ciphertext,Files.readAllBytes(Paths.get("work/second.rbk"))),"salt reuse");
+ List<Integer> copies=Arrays.asList(9,8,7,6);require(RetentionPolicy.older(copies,3).equals(Collections.singletonList(6)),"retention");require(RetentionPolicy.older(copies,10).isEmpty(),"keep short history");reject(()->RetentionPolicy.older(copies,0));reject(()->RetentionPolicy.older(copies,51));
+ TransferProgress.start("Preparing");TransferProgress.app(2,3,"Disposable");TransferProgress.phase("Streaming",10000000);TransferProgress.bytes(2000000);Thread.sleep(1050);String progress=TransferProgress.detail();require(progress.contains("2 of 3")&&progress.contains("remaining")&&progress.contains("/s"),"known-size progress");TransferProgress.phase("Checking",-1);TransferProgress.bytes(100);require(!TransferProgress.detail().contains("remaining"),"unknown ETA");TransferProgress.stop();require(TransferProgress.detail()==null,"progress cleared");
+ System.out.println("PASS streaming encryption, Unicode password, random seeks across segments, wrong password, header/body/final-tag corruption, truncation, randomized salts, retention boundaries and progress/ETA");
+ }
+}

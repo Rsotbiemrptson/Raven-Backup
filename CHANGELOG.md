@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.0 — backup safeguards and optional encryption (November 24, 2026)
+
+- Add operation stages, transfer bytes/rate and estimated time where size is known.
+- Add opt-in full completed-backup verification with dated status and opt-in newest-N retention after verification. Preserve locked, unrecognized and recovery archives.
+- Preview replaced folders, destination card mappings and estimated temporary/recovery space; recheck mapping and free space before replacement.
+- Add an explicit standard-superuser backend for already-rooted devices, keeping automatic detection restricted to the compatible Odin service and requiring guided capability/restore checks.
+- Add optional authenticated streaming password encryption, seekable decryption, off-by-default device password storage, schedule reminders and fail-closed encrypted schedules.
+- Keep older plaintext backups and independent full-backup behavior. Incremental backups are deferred.
+
 ## 1.7.2 — restore performance, compatibility and settings transfer (November 14, 2026)
 
 - Support newline filenames, app-scoped external symbolic links and metadata-only private FIFOs; retain strict path, ownership and device-node checks.
